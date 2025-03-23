@@ -1,0 +1,59 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:5432/qualifaize
+    username: postgres
+    password: "0000"
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true  # Ensures Flyway can track existing DB
+    out-of-order: true  # Allows applying older migrations after newer ones
+    group: false  # Prevents batching migrations into a single transaction
+    validate-on-migrate: true  # Validates schema before applying migrations
+    clean-disabled: true  # Prevents accidental database wipes
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: none  # Prevents Hibernate from auto-modifying schema
+    properties:
+      hibernate:
+        show_sql: true  # Logs SQL queries for debugging
+        format_sql: true  # Pretty-print SQL logs
+        use_sql_comments: true  # Adds comments to SQL logs
+        jdbc.lob.non_contextual_creation: true  # Fixes LOB handling issues in PostgreSQL
+
+  application:
+    name: qualifaize-backend-api
+
+  sql:
+    init:
+      mode: always  # Always run SQL init scripts at startup
+      platform: postgres  # PostgreSQL-specific scripts
+
+logging:
+  level:
+    org:
+      flywaydb: DEBUG  # Logs Flyway migrations
+      hibernate.SQL: DEBUG  # Logs executed SQL queries
+      hibernate.type.descriptor.sql.BasicBinder: TRACE  # Logs SQL query parameters
+
+server:
+  port: 8080  # Application runs on port 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: openapi, swagger-ui, *  # Exposes all actuator endpoints
+  info:
+    env:
+      enabled: true  # Enables environment info in actuator
+  server:
+    port: 9090  # Management endpoints run separately on port 9090
+
+springdoc:
+  show-actuator: true  # Exposes actuator endpoints in Swagger UI
