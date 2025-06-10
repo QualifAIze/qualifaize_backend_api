@@ -53,7 +53,7 @@ management:
     env:
       enabled: true  # Enables environment info in actuator
   server:
-    port: 9090  # Management endpoints run separately on port 9090
+    port: 8090  # Management endpoints run separately on port 9090
 
 springdoc:
   show-actuator: true  # Exposes actuator endpoints in Swagger UI

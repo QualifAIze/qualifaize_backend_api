@@ -27,11 +27,9 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
         response.setContentType("application/json");
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 
-        // Get authenticated username
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = (authentication != null && authentication.getName() != null) ? authentication.getName() : "Anonymous";
 
-        // Create JSON response
         AccessDeniedResponse errorResponse = new AccessDeniedResponse(
                 "Forbidden",
                 "You do not have permission to access this resource",

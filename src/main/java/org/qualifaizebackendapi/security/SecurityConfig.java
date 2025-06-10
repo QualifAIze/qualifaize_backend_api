@@ -28,27 +28,29 @@ public class SecurityConfig {
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
 
     @Bean
-    public BCryptPasswordEncoder bCryptPasswordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
-    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(sessionManagement -> sessionManagement
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
-                        .requestMatchers("/register", "/login", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/").permitAll()
-                        .requestMatchers("/user").hasAnyRole("ADMIN", "USER") // Restrict access to ADMIN and USER roles
-                        .requestMatchers("/admin").hasRole("ADMIN") // Restrict access to ADMIN role
+                        .requestMatchers("/api/v1/auth/**", "/api/v1/pdf/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/").permitAll()
+                        .requestMatchers("/user").hasAnyRole("ADMIN", "USER")
+                        .requestMatchers("/admin").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .exceptionHandling(exception -> exception
-                        .accessDeniedHandler(accessDeniedHandler) // Handles forbidden responses
-                        .authenticationEntryPoint(authenticationEntryPoint)) // Handles unauthorized responses
-                .sessionManagement(sessionManagement -> sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                        .accessDeniedHandler(accessDeniedHandler)
+                        .authenticationEntryPoint(authenticationEntryPoint))
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
+    @Bean
+    public BCryptPasswordEncoder bCryptPasswordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 
     @Bean
     public AuthenticationProvider authenticationProvider() {

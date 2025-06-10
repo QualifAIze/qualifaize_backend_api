@@ -6,6 +6,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class QualifAIzeUserDetails implements UserDetails {
@@ -32,6 +33,10 @@ public class QualifAIzeUserDetails implements UserDetails {
     public String getUsername() {
         return user.getUsername();
     }
+
+    public UUID getId() { return user.getId(); }
+
+    public User getUser() { return user; }
 
     @Override
     public boolean isAccountNonExpired() {

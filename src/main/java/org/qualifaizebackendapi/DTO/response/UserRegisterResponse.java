@@ -5,4 +5,4 @@ import org.qualifaizebackendapi.model.Role;
 
 import java.util.Set;
 
-public record RegisteredUserResponse(String username, String token, Set<Role> roles){}
+public record UserRegisterResponse(String username, String token, Set<Role> roles){}
