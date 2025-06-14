@@ -8,11 +8,11 @@ import java.util.List;
 
 @Getter
 @Setter
-public class Subsection {
+public class SubsectionWithoutContent {
     private String title;
 
     @JsonProperty("subsections_count")
     private int subsectionsCount;
 
-    private List<Subsection> subsections;
+    private List<SubsectionWithContent> subsections;
 }

@@ -4,8 +4,12 @@ package org.qualifaizebackendapi.service.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.qualifaizebackendapi.DTO.parseDTO.ParsedDocumentDetailsResponse;
+import org.qualifaizebackendapi.DTO.parseDTO.SubsectionWithContent;
 import org.qualifaizebackendapi.DTO.response.pdf.UploadedPdfResponse;
 import org.qualifaizebackendapi.mapper.PdfMapper;
+import org.qualifaizebackendapi.model.Document;
+import org.qualifaizebackendapi.model.Subsection;
+import org.qualifaizebackendapi.repository.PdfRepository;
 import org.qualifaizebackendapi.service.PdfService;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
@@ -19,6 +23,8 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Mono;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 @Service
@@ -27,6 +33,7 @@ import java.util.Objects;
 public class PdfServiceImpl implements PdfService {
 
     private final WebClient documentParserServiceWebClient;
+    private final PdfRepository pdfRepository;
     private final PdfMapper pdfMapper;
 
     @Override
@@ -83,20 +90,46 @@ public class PdfServiceImpl implements PdfService {
             return;
         }
 
+        Document savedDocument = pdfRepository.save(this.mapToDocument(response, secondaryFileName));
+
         log.info("Document processing completed successfully:");
-        log.info("  Original filename: {}", response.getOriginalFileName());
-        log.info("  Secondary filename: {}", secondaryFileName);
-        log.info("  TOC sections: {}", response.getToc() != null ? response.getToc().getSubsectionsCount() : 0);
-        log.info("  Content sections: {}", response.getTocWithContent() != null ?
-                response.getTocWithContent().getSubsectionsCount() : 0);
+        log.info("  DocumentId: {}", savedDocument.getId());
+        log.info("  Original filename: {}", savedDocument.getFileName());
+        log.info("  Secondary filename: {}", savedDocument.getSecondaryFileName());
+        log.info("  Content sections: {}", savedDocument.getSubsections() != null ? savedDocument.getSubsections().size() : 0);
+    }
+
+    private Document mapToDocument(ParsedDocumentDetailsResponse response, String secondaryFileName) {
+        Document document = pdfMapper.toDocument(response, secondaryFileName);
+        List<SubsectionWithContent> allSubsectionsBeforeMapping = response.getTocWithContent().getSubsections();
+        List<Subsection> mappedSubsections = new ArrayList<>();
+        document.setSubsections(mappedSubsections);
+        mapSubsections(mappedSubsections, allSubsectionsBeforeMapping, document, null, 0);
+        return document;
+    }
+
+    private void mapSubsections(List<Subsection> mappedSubsections, List<SubsectionWithContent> subsectionsToBeMapped,
+                                Document document, Subsection parent, int level) {
+        if (subsectionsToBeMapped == null) return;
+
+        for (int i = 0; i < subsectionsToBeMapped.size(); i++) {
+            SubsectionWithContent unmappedSubsection = subsectionsToBeMapped.get(i);
+            Subsection mappedSubsection = pdfMapper.mapToSubsection(unmappedSubsection, parent, document, level, i);
+            if (parent == null) {
+                mappedSubsections.add(mappedSubsection);
+            } else {
+                parent.getChildren().add(mappedSubsection);
+            }
+            mapSubsections(mappedSubsections, unmappedSubsection.getSubsections(), document, mappedSubsection, level + 1);
+
+        }
     }
 
     private RuntimeException handleProcessingError(Throwable error) {
         String errorMessage = "Failed to process PDF document";
 
         return switch (error) {
-            case IllegalArgumentException ignored ->
-                    new IllegalArgumentException(error.getMessage(), error);
+            case IllegalArgumentException ignored -> new IllegalArgumentException(error.getMessage(), error);
             case WebClientResponseException webError -> new RuntimeException(
                     String.format("%s - Service error [%d]: %s",
                             errorMessage, webError.getStatusCode().value(), webError.getMessage()),
