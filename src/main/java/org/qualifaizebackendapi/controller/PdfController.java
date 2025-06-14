@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import reactor.core.publisher.Mono;
 
 @Tag(name = "PDF Operations", description = "Operations related to pdf document/s")
 @RequiredArgsConstructor
@@ -40,15 +41,14 @@ public class PdfController {
             @ApiResponse(responseCode = "409", description = "Already saved pdf document",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    public ResponseEntity<UploadedPdfResponse> uploadPdf(
+    public Mono<UploadedPdfResponse> uploadPdf(
             @Parameter(description = "PDF file to upload", required = true, content = @Content(mediaType = "application/pdf"))
             @RequestParam("file") MultipartFile file,
 
             @Parameter(description = "Required secondary file name", required = true)
             @RequestParam(value = "secondary_file_name") String secondaryFileName
     ) {
-        UploadedPdfResponse result = pdfService.savePdf(file, secondaryFileName);
-        return ResponseEntity.ok(result);
+        return pdfService.savePdf(file, secondaryFileName);
     }
 
 }

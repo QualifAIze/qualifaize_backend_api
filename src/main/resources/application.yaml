@@ -1,4 +1,8 @@
 spring:
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
   datasource:
     url: jdbc:postgresql://127.0.0.1:5432/qualifaize
     username: postgres
@@ -6,6 +10,9 @@ spring:
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
+
+external-services:
+  document-parser-base-url: http://127.0.0.1:8000
 
   flyway:
     enabled: true
