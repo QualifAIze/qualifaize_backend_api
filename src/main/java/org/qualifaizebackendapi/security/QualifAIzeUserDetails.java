@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 
 public class QualifAIzeUserDetails implements UserDetails {
 
-    private User user;
+    private final User user;
 
     public QualifAIzeUserDetails(User user) {
         this.user = user;

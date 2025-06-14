@@ -14,6 +14,9 @@ spring:
 external-services:
   document-parser-base-url: http://127.0.0.1:8000
 
+jwt:
+  secret: "7711c263fea10269fd55af84135ede21db94c6d2871294c6313fdc9e531c451f0905f80a4e7fc238af3fbc41189b501c7e61432ebc8c60528b34d3d9c976bf2a"
+
   flyway:
     enabled: true
     baseline-on-migrate: true  # Ensures Flyway can track existing DB
