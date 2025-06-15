@@ -7,6 +7,7 @@ import org.qualifaizebackendapi.DTO.parseDTO.ParsedDocumentDetailsResponse;
 import org.qualifaizebackendapi.DTO.parseDTO.SubsectionWithContent;
 import org.qualifaizebackendapi.DTO.response.pdf.UploadedPdfResponse;
 import org.qualifaizebackendapi.exception.DuplicateDocumentException;
+import org.qualifaizebackendapi.exception.ResourceNotFoundException;
 import org.qualifaizebackendapi.mapper.PdfMapper;
 import org.qualifaizebackendapi.model.Document;
 import org.qualifaizebackendapi.model.Subsection;
@@ -59,22 +60,31 @@ public class PdfServiceImpl implements PdfService {
 
     @Override
     public UploadedPdfResponse changeDocumentSecondaryFilename(UUID documentId, String newTitle) {
-        return null;
+        Document documentToUpdate = this.fetchPdfOrThrow(documentId);
+        documentToUpdate.setSecondaryFileName(newTitle);
+        return this.pdfMapper.toUploadedPdfResponseFromOnlyDocument(pdfRepository.save(documentToUpdate));
     }
 
     @Override
     public UploadedPdfResponse getDocumentById(UUID documentId) {
-        return null;
+        return this.pdfMapper.toUploadedPdfResponseFromOnlyDocument(this.fetchPdfOrThrow(documentId));
     }
 
     @Override
     public List<UploadedPdfResponse> getAllDocuments() {
-        return List.of();
+        return this.pdfMapper.toUploadedPdfResponsesFromOnlyDocuments(this.pdfRepository.findAll());
     }
 
     @Override
     public void deleteDocument(UUID documentId) {
+        pdfRepository.delete(this.fetchPdfOrThrow(documentId));
+    }
 
+    private Document fetchPdfOrThrow(UUID documentId) {
+        return pdfRepository.findById(documentId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        String.format("PDF document not found with id: %s", documentId)
+                ));
     }
 
     private void validateFile(MultipartFile file) {
@@ -159,7 +169,7 @@ public class PdfServiceImpl implements PdfService {
         String errorMessage = "Failed to process PDF document";
 
         return switch (error) {
-            case DuplicateDocumentException ignore ->  new DuplicateDocumentException(error.getMessage());
+            case DuplicateDocumentException ignore -> new DuplicateDocumentException(error.getMessage());
             case IllegalArgumentException ignored -> new IllegalArgumentException(error.getMessage(), error);
             case WebClientResponseException webError -> new RuntimeException(
                     String.format("%s - Service error [%d]: %s",

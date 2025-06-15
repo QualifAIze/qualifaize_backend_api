@@ -54,6 +54,7 @@ public class PdfController {
         return pdfService.savePdf(file, secondaryFileName);
     }
 
+
     @Operation(
             summary = "List all PDF documents",
             description = "Retrieves a list of all uploaded PDF documents."
@@ -75,6 +76,7 @@ public class PdfController {
         List<UploadedPdfResponse> docs = pdfService.getAllDocuments();
         return ResponseEntity.ok(docs);
     }
+
 
     @Operation(
             summary = "Get PDF document details",
@@ -109,7 +111,7 @@ public class PdfController {
         return ResponseEntity.ok(dto);
     }
 
-    
+
     @Operation(
             summary = "Update document title",
             description = "Updates the secondary filename (title) of an existing PDF document. Only the title field is modified, leaving other document properties unchanged."

@@ -9,6 +9,8 @@ import org.qualifaizebackendapi.DTO.response.pdf.UploadedPdfResponse;
 import org.qualifaizebackendapi.model.Document;
 import org.qualifaizebackendapi.model.Subsection;
 
+import java.util.List;
+
 @Mapper(componentModel = "spring")
 public interface PdfMapper {
 
@@ -17,6 +19,14 @@ public interface PdfMapper {
     @Mapping(target = "createdAt", source = "parsedResponse.createdAt")
     @Mapping(target = "id", source = "parsedResponse.id")
     UploadedPdfResponse toUploadedPdfResponse(Document parsedResponse, String secondaryFilename);
+
+    @Mapping(target = "filename", source = "documentFromDB.fileName")
+    @Mapping(target = "secondaryFilename", source = "documentFromDB.secondaryFileName")
+    @Mapping(target = "createdAt", source = "documentFromDB.createdAt")
+    @Mapping(target = "id", source = "documentFromDB.id")
+    UploadedPdfResponse toUploadedPdfResponseFromOnlyDocument(Document documentFromDB);
+
+    List<UploadedPdfResponse> toUploadedPdfResponsesFromOnlyDocuments(List<Document> documentsFromDB);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "subsections", ignore = true)
