@@ -1,11 +1,13 @@
 package org.qualifaizebackendapi.mapper;
 
+import org.mapstruct.InheritConfiguration;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 import org.qualifaizebackendapi.DTO.parseDTO.ParsedDocumentDetailsResponse;
 import org.qualifaizebackendapi.DTO.parseDTO.SubsectionWithContent;
 import org.qualifaizebackendapi.DTO.response.pdf.UploadedPdfResponse;
+import org.qualifaizebackendapi.DTO.response.pdf.table_of_contents_response.SubsectionDetailsDTO;
 import org.qualifaizebackendapi.DTO.response.pdf.table_of_contents_response.UploadedPdfResponseWithToc;
 import org.qualifaizebackendapi.model.Document;
 import org.qualifaizebackendapi.model.Subsection;
@@ -27,8 +29,13 @@ public interface PdfMapper {
     @Mapping(target = "id", source = "documentFromDB.id")
     UploadedPdfResponse toUploadedPdfResponseFromOnlyDocument(Document documentFromDB);
 
-
     List<UploadedPdfResponse> toUploadedPdfResponsesFromOnlyDocuments(List<Document> documentsFromDB);
+
+    @InheritConfiguration(name = "toUploadedPdfResponseFromOnlyDocument")
+    @Mapping(target = "filename", source = "documentFromDB.fileName")
+    @Mapping(target = "secondaryFilename", source = "documentFromDB.secondaryFileName")
+    @Mapping(target = "subsections", source = "subsections")
+    UploadedPdfResponseWithToc toUploadedPdfResponseWithToc(Document documentFromDB, List<SubsectionDetailsDTO> subsections);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "subsections", ignore = true)

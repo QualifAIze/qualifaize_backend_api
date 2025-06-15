@@ -3,17 +3,21 @@ package org.qualifaizebackendapi.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.qualifaizebackendapi.DTO.db_object.SubsectionRow;
 import org.qualifaizebackendapi.DTO.parseDTO.ParsedDocumentDetailsResponse;
 import org.qualifaizebackendapi.DTO.parseDTO.SubsectionWithContent;
 import org.qualifaizebackendapi.DTO.response.pdf.UploadedPdfResponse;
 import org.qualifaizebackendapi.DTO.response.pdf.UploadedPdfResponseWithConcatenatedContent;
+import org.qualifaizebackendapi.DTO.response.pdf.table_of_contents_response.SubsectionDetailsDTO;
 import org.qualifaizebackendapi.DTO.response.pdf.table_of_contents_response.UploadedPdfResponseWithToc;
 import org.qualifaizebackendapi.exception.DuplicateDocumentException;
 import org.qualifaizebackendapi.exception.ResourceNotFoundException;
 import org.qualifaizebackendapi.mapper.PdfMapper;
+import org.qualifaizebackendapi.mapper.SubsectionMapper;
 import org.qualifaizebackendapi.model.Document;
 import org.qualifaizebackendapi.model.Subsection;
 import org.qualifaizebackendapi.repository.PdfRepository;
+import org.qualifaizebackendapi.repository.SubsectionRepository;
 import org.qualifaizebackendapi.service.PdfService;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
@@ -27,10 +31,10 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Mono;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -39,7 +43,9 @@ public class PdfServiceImpl implements PdfService {
 
     private final WebClient documentParserServiceWebClient;
     private final PdfRepository pdfRepository;
+    private final SubsectionRepository subsectionRepository;
     private final PdfMapper pdfMapper;
+    private final SubsectionMapper subsectionMapper;
 
     @Override
     public Mono<UploadedPdfResponse> savePdf(MultipartFile file, String secondaryFileName) {
@@ -63,12 +69,14 @@ public class PdfServiceImpl implements PdfService {
 
     @Override
     public UploadedPdfResponseWithToc getDocumentDetailsAndTocById(UUID documentId) {
-        return new UploadedPdfResponseWithToc();
+        List<SubsectionDetailsDTO> subsectionData = this.mapToHierarchy(subsectionRepository.fetchFlatToc(documentId));
+        return this.pdfMapper.toUploadedPdfResponseWithToc(this.fetchPdfOrThrow(documentId), subsectionData);
     }
 
     @Override
     public UploadedPdfResponseWithConcatenatedContent getConcatenatedContentById(UUID documentId, String subsectionName) {
-        return null;
+        return this.objectToPdfWithContentMapper(pdfRepository.
+                findSubsectionContentByTitleAndDocumentId(subsectionName, documentId));
     }
 
     @Override
@@ -93,6 +101,45 @@ public class PdfServiceImpl implements PdfService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         String.format("PDF document not found with id: %s", documentId)
                 ));
+    }
+
+    public List<SubsectionDetailsDTO> mapToHierarchy(List<SubsectionRow> rows) {
+        if (rows == null || rows.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        Map<UUID, List<SubsectionRow>> childrenByParent = rows.stream()
+                .collect(Collectors.groupingBy(
+                        row -> row.getParentId() != null ? row.getParentId() : UUID.fromString("00000000-0000-0000-0000-000000000000"),
+                        Collectors.toList()
+                ));
+
+        childrenByParent.values().forEach(children ->
+                children.sort(Comparator.comparingInt(SubsectionRow::getPosition))
+        );
+
+        List<SubsectionRow> rootRows = rows.stream()
+                .filter(row -> row.getParentId() == null)
+                .sorted(Comparator.comparingInt(SubsectionRow::getPosition))
+                .toList();
+
+        return rootRows.stream()
+                .map(row -> addChildrenToParent(row, childrenByParent))
+                .collect(Collectors.toList());
+    }
+
+    private SubsectionDetailsDTO addChildrenToParent(SubsectionRow row, Map<UUID, List<SubsectionRow>> childrenByParent) {
+        SubsectionDetailsDTO dto = subsectionMapper.toSubsectionDetailsDTO(row);
+
+        List<SubsectionRow> children = childrenByParent.getOrDefault(row.getId(), new ArrayList<>());
+
+        List<SubsectionDetailsDTO> childDTOs = children.stream()
+                .map(child -> addChildrenToParent(child, childrenByParent))
+                .collect(Collectors.toList());
+
+        dto.setSubsections(childDTOs);
+
+        return dto;
     }
 
     private void validateFile(MultipartFile file) {
@@ -206,5 +253,19 @@ public class PdfServiceImpl implements PdfService {
         } catch (IOException e) {
             throw new RuntimeException("Failed to extract bytes from uploaded file", e);
         }
+    }
+
+    private UploadedPdfResponseWithConcatenatedContent objectToPdfWithContentMapper(List<Object[]> data) {
+        Object[] source = data.getFirst();
+        String filename = (String) source[0];
+        String secondaryFilename = (String) source[1];
+        Instant creationDate = (Instant) source[2];
+        UUID documentId = (UUID) source[3];
+        String sectionTitle = (String) source[4];
+        String content = (String) source[5];
+        Long subsectionsCount =  (Long) source[6];
+
+        return new UploadedPdfResponseWithConcatenatedContent(documentId, filename, secondaryFilename,
+                creationDate.atOffset(ZoneOffset.UTC), sectionTitle, content, subsectionsCount);
     }
 }
