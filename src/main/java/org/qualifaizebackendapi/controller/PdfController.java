@@ -12,6 +12,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.qualifaizebackendapi.DTO.response.pdf.UploadedPdfResponse;
+import org.qualifaizebackendapi.DTO.response.pdf.UploadedPdfResponseWithConcatenatedContent;
+import org.qualifaizebackendapi.DTO.response.pdf.table_of_contents_response.UploadedPdfResponseWithToc;
 import org.qualifaizebackendapi.exception.ErrorResponse;
 import org.qualifaizebackendapi.service.PdfService;
 import org.springframework.http.MediaType;
@@ -79,15 +81,57 @@ public class PdfController {
 
 
     @Operation(
-            summary = "Get PDF document details",
-            description = "Retrieves metadata of a specific PDF document by its unique identifier."
+            summary = "Get PDF document concatenated content",
+            description = "Retrieves the content of the specified subsection and all its nested sections into a single string."
+    )
+    @GetMapping("/{documentId}/content")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Document content retrieved and concatenated successfully",
+                    content = @Content(schema = @Schema(implementation = UploadedPdfResponseWithConcatenatedContent.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid document ID or subsection name parameter",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Document or subsection not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    public ResponseEntity<UploadedPdfResponseWithConcatenatedContent> getDocumentContent(
+            @Parameter(
+                    description = "Unique identifier of the document whose content to retrieve and concatenate",
+                    required = true
+            )
+            @PathVariable @NotNull UUID documentId,
+
+            @Parameter(
+                    description = "Name of the subsection from which to start concatenating content",
+                    required = true
+            )
+            @RequestParam(name = "subsectionName")
+            @NotBlank String subsectionName
+    ) {
+        UploadedPdfResponseWithConcatenatedContent dto =
+                pdfService.getConcatenatedContentById(documentId, subsectionName);
+        return ResponseEntity.ok(dto);
+    }
+
+
+    @Operation(
+            summary = "Get PDF document details with table of contents",
+            description = "Retrieves metadata of a specific PDF document by its unique identifier, including its table of contents."
     )
     @GetMapping("/{documentId}")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
                     description = "Document retrieved successfully",
-                    content = @Content(schema = @Schema(implementation = UploadedPdfResponse.class))
+                    content = @Content(schema = @Schema(implementation = UploadedPdfResponseWithToc.class))
             ),
             @ApiResponse(
                     responseCode = "400",
@@ -100,14 +144,14 @@ public class PdfController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))
             )
     })
-    public ResponseEntity<UploadedPdfResponse> getDocumentById(
+    public ResponseEntity<UploadedPdfResponseWithToc> getDocumentByIdWithToc(
             @Parameter(
                     description = "Unique identifier of the document to retrieve",
                     required = true
             )
             @PathVariable @NotNull UUID documentId
     ) {
-        UploadedPdfResponse dto = pdfService.getDocumentById(documentId);
+        UploadedPdfResponseWithToc dto = pdfService.getDocumentDetailsAndTocById(documentId);
         return ResponseEntity.ok(dto);
     }
 

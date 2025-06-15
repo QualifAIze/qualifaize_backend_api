@@ -6,6 +6,7 @@ import org.mapstruct.Named;
 import org.qualifaizebackendapi.DTO.parseDTO.ParsedDocumentDetailsResponse;
 import org.qualifaizebackendapi.DTO.parseDTO.SubsectionWithContent;
 import org.qualifaizebackendapi.DTO.response.pdf.UploadedPdfResponse;
+import org.qualifaizebackendapi.DTO.response.pdf.table_of_contents_response.UploadedPdfResponseWithToc;
 import org.qualifaizebackendapi.model.Document;
 import org.qualifaizebackendapi.model.Subsection;
 
@@ -25,6 +26,7 @@ public interface PdfMapper {
     @Mapping(target = "createdAt", source = "documentFromDB.createdAt")
     @Mapping(target = "id", source = "documentFromDB.id")
     UploadedPdfResponse toUploadedPdfResponseFromOnlyDocument(Document documentFromDB);
+
 
     List<UploadedPdfResponse> toUploadedPdfResponsesFromOnlyDocuments(List<Document> documentsFromDB);
 

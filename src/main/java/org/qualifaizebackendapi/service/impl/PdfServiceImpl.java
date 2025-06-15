@@ -6,6 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.qualifaizebackendapi.DTO.parseDTO.ParsedDocumentDetailsResponse;
 import org.qualifaizebackendapi.DTO.parseDTO.SubsectionWithContent;
 import org.qualifaizebackendapi.DTO.response.pdf.UploadedPdfResponse;
+import org.qualifaizebackendapi.DTO.response.pdf.UploadedPdfResponseWithConcatenatedContent;
+import org.qualifaizebackendapi.DTO.response.pdf.table_of_contents_response.UploadedPdfResponseWithToc;
 import org.qualifaizebackendapi.exception.DuplicateDocumentException;
 import org.qualifaizebackendapi.exception.ResourceNotFoundException;
 import org.qualifaizebackendapi.mapper.PdfMapper;
@@ -58,16 +60,22 @@ public class PdfServiceImpl implements PdfService {
                 .onErrorMap(this::handleProcessingError);
     }
 
+
+    @Override
+    public UploadedPdfResponseWithToc getDocumentDetailsAndTocById(UUID documentId) {
+        return new UploadedPdfResponseWithToc();
+    }
+
+    @Override
+    public UploadedPdfResponseWithConcatenatedContent getConcatenatedContentById(UUID documentId, String subsectionName) {
+        return null;
+    }
+
     @Override
     public UploadedPdfResponse changeDocumentSecondaryFilename(UUID documentId, String newTitle) {
         Document documentToUpdate = this.fetchPdfOrThrow(documentId);
         documentToUpdate.setSecondaryFileName(newTitle);
         return this.pdfMapper.toUploadedPdfResponseFromOnlyDocument(pdfRepository.save(documentToUpdate));
-    }
-
-    @Override
-    public UploadedPdfResponse getDocumentById(UUID documentId) {
-        return this.pdfMapper.toUploadedPdfResponseFromOnlyDocument(this.fetchPdfOrThrow(documentId));
     }
 
     @Override
