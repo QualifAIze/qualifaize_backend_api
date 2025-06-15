@@ -12,11 +12,11 @@ import org.qualifaizebackendapi.model.Subsection;
 @Mapper(componentModel = "spring")
 public interface PdfMapper {
 
-    @Mapping(target = "fileName", source = "parsedResponse.originalFileName")
+    @Mapping(target = "fileName", source = "parsedResponse.fileName")
     @Mapping(target = "secondaryFileName", source = "secondaryFileName")
-    @Mapping(target = "createdAt", expression = "java(java.time.OffsetDateTime.now())")
-    @Mapping(target = "id", constant = "1L")
-    UploadedPdfResponse toUploadedPdfResponse(ParsedDocumentDetailsResponse parsedResponse, String secondaryFileName);
+    @Mapping(target = "createdAt", source = "parsedResponse.createdAt")
+    @Mapping(target = "id", source = "parsedResponse.id")
+    UploadedPdfResponse toUploadedPdfResponse(Document parsedResponse, String secondaryFileName);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "subsections", ignore = true)

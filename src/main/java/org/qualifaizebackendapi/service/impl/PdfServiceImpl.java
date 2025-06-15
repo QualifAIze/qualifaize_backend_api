@@ -50,7 +50,7 @@ public class PdfServiceImpl implements PdfService {
 
         return createFileResource(file)
                 .flatMap(this::sendToDocumentParser)
-                .doOnNext(response -> processDocumentResponse(response, secondaryFileName))
+                .flatMap(response -> Mono.just(processDocumentResponse(response, secondaryFileName)))
                 .map(response -> pdfMapper.toUploadedPdfResponse(response, secondaryFileName))
                 .doOnError(error -> log.error("Failed to process PDF: {}", error.getMessage(), error))
                 .onErrorMap(this::handleProcessingError);
@@ -91,10 +91,10 @@ public class PdfServiceImpl implements PdfService {
                                 response.statusCode().value(), errorBody)));
     }
 
-    private void processDocumentResponse(ParsedDocumentDetailsResponse response, String secondaryFileName) {
+    private Document processDocumentResponse(ParsedDocumentDetailsResponse response, String secondaryFileName) {
         if (response == null) {
             log.warn("Received null response from document parser");
-            return;
+            return new Document();
         }
 
         Document savedDocument = pdfRepository.save(this.mapToDocument(response, secondaryFileName));
@@ -104,6 +104,8 @@ public class PdfServiceImpl implements PdfService {
         log.info("  Original filename: {}", savedDocument.getFileName());
         log.info("  Secondary filename: {}", savedDocument.getSecondaryFileName());
         log.info("  Content sections: {}", savedDocument.getSubsections() != null ? savedDocument.getSubsections().size() : 0);
+
+        return savedDocument;
     }
 
     private Document mapToDocument(ParsedDocumentDetailsResponse response, String secondaryFileName) {
