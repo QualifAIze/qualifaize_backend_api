@@ -14,7 +14,7 @@ import java.util.UUID;
 @NoArgsConstructor
 public class UploadedPdfResponse {
     private UUID id;
-    private String fileName;
-    private String secondaryFileName;
+    private String filename;
+    private String secondaryFilename;
     private OffsetDateTime createdAt;
 }

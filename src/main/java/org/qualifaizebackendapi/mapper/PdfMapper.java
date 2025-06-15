@@ -12,19 +12,19 @@ import org.qualifaizebackendapi.model.Subsection;
 @Mapper(componentModel = "spring")
 public interface PdfMapper {
 
-    @Mapping(target = "fileName", source = "parsedResponse.fileName")
-    @Mapping(target = "secondaryFileName", source = "secondaryFileName")
+    @Mapping(target = "filename", source = "parsedResponse.fileName")
+    @Mapping(target = "secondaryFilename", source = "secondaryFilename")
     @Mapping(target = "createdAt", source = "parsedResponse.createdAt")
     @Mapping(target = "id", source = "parsedResponse.id")
-    UploadedPdfResponse toUploadedPdfResponse(Document parsedResponse, String secondaryFileName);
+    UploadedPdfResponse toUploadedPdfResponse(Document parsedResponse, String secondaryFilename);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "subsections", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "subsectionsCount", source = "parsedResponse", qualifiedByName = "extractSubsectionsCount")
-    @Mapping(target = "fileName", source = "parsedResponse.originalFileName")
-    @Mapping(target = "secondaryFileName", source = "secondaryFileName")
-    Document toDocument(ParsedDocumentDetailsResponse parsedResponse, String secondaryFileName);
+    @Mapping(target = "fileName", source = "parsedResponse.originalFilename")
+    @Mapping(target = "secondaryFileName", source = "secondaryFilename")
+    Document toDocument(ParsedDocumentDetailsResponse parsedResponse, String secondaryFilename);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "document", source = "document")

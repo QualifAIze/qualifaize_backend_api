@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -56,6 +57,26 @@ public class PdfServiceImpl implements PdfService {
                 .onErrorMap(this::handleProcessingError);
     }
 
+    @Override
+    public UploadedPdfResponse changeDocumentSecondaryFilename(UUID documentId, String newTitle) {
+        return null;
+    }
+
+    @Override
+    public UploadedPdfResponse getDocumentById(UUID documentId) {
+        return null;
+    }
+
+    @Override
+    public List<UploadedPdfResponse> getAllDocuments() {
+        return List.of();
+    }
+
+    @Override
+    public void deleteDocument(UUID documentId) {
+
+    }
+
     private void validateFile(MultipartFile file) {
         if (file.isEmpty()) {
             throw new IllegalArgumentException("File cannot be empty");
@@ -80,7 +101,7 @@ public class PdfServiceImpl implements PdfService {
                 .onStatus(HttpStatusCode::isError, this::handleHttpError)
                 .bodyToMono(ParsedDocumentDetailsResponse.class)
                 .doOnSuccess(response -> log.info("Successfully parsed document: {}",
-                        response != null ? response.getOriginalFileName() : "unknown"));
+                        response != null ? response.getOriginalFilename() : "unknown"));
     }
 
     private Mono<? extends Throwable> handleHttpError(ClientResponse response) {
