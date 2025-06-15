@@ -84,7 +84,7 @@ public class PdfController {
             summary = "Get PDF document concatenated content",
             description = "Retrieves the content of the specified subsection and all its nested sections into a single string."
     )
-    @GetMapping("/{documentId}/content")
+    @GetMapping("/{documentId}/{subsectionName}")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
@@ -113,8 +113,7 @@ public class PdfController {
                     description = "Name of the subsection from which to start concatenating content",
                     required = true
             )
-            @RequestParam(name = "subsectionName")
-            @NotBlank String subsectionName
+            @PathVariable @NotNull String subsectionName
     ) {
         UploadedPdfResponseWithConcatenatedContent dto =
                 pdfService.getConcatenatedContentById(documentId, subsectionName);
