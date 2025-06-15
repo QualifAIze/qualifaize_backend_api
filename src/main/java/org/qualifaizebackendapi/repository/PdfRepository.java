@@ -6,4 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.UUID;
 
 public interface PdfRepository extends JpaRepository<Document, UUID> {
+    boolean existsBySecondaryFileName(String secondaryFileName);
 }

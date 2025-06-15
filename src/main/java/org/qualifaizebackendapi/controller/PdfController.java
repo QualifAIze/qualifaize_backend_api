@@ -32,7 +32,7 @@ public class PdfController {
             summary = "Upload a PDF file",
             description = "Uploads one PDF file. The 'file' parameter must be a valid PDF document. The document is parsed and saved"
     )
-    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "PDF uploaded successfully",
                     content = @Content(schema = @Schema(implementation = UploadedPdfResponse.class))),

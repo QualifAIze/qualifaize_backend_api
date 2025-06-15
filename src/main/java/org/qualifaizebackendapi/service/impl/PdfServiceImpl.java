@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.qualifaizebackendapi.DTO.parseDTO.ParsedDocumentDetailsResponse;
 import org.qualifaizebackendapi.DTO.parseDTO.SubsectionWithContent;
 import org.qualifaizebackendapi.DTO.response.pdf.UploadedPdfResponse;
+import org.qualifaizebackendapi.exception.DuplicateDocumentException;
 import org.qualifaizebackendapi.mapper.PdfMapper;
 import org.qualifaizebackendapi.model.Document;
 import org.qualifaizebackendapi.model.Subsection;
@@ -38,6 +39,12 @@ public class PdfServiceImpl implements PdfService {
 
     @Override
     public Mono<UploadedPdfResponse> savePdf(MultipartFile file, String secondaryFileName) {
+
+        if (pdfRepository.existsBySecondaryFileName(secondaryFileName)) {
+            log.warn("Document with secondary filename '{}' already exists", secondaryFileName);
+            throw new DuplicateDocumentException("Document with name '" + secondaryFileName + "' already exists");
+        }
+
         log.info("Processing PDF upload for file: {} with secondary name: {}",
                 file.getOriginalFilename(), secondaryFileName);
 
@@ -129,6 +136,7 @@ public class PdfServiceImpl implements PdfService {
         String errorMessage = "Failed to process PDF document";
 
         return switch (error) {
+            case DuplicateDocumentException ignore ->  new DuplicateDocumentException(error.getMessage());
             case IllegalArgumentException ignored -> new IllegalArgumentException(error.getMessage(), error);
             case WebClientResponseException webError -> new RuntimeException(
                     String.format("%s - Service error [%d]: %s",
