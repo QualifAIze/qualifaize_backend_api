@@ -21,7 +21,9 @@ public class QualifAIzeUserDetailsService implements UserDetailsService {
         User user = userRepository.findByUsername(username);
         if (user == null) {
             String message = "Username " + username + " not found";
-            System.out.println(message);
+            throw new UsernameNotFoundException(message);
+        } else if (user.isDeleted()) {
+            String message = "Username '" + username + "' was found but account is deleted!";
             throw new UsernameNotFoundException(message);
         }
 

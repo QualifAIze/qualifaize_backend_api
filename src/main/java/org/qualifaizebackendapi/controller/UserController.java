@@ -11,20 +11,20 @@ import org.qualifaizebackendapi.DTO.request.UserRegisterRequest;
 import org.qualifaizebackendapi.DTO.response.AccessDeniedResponse;
 import org.qualifaizebackendapi.DTO.response.UserRegisterResponse;
 import org.qualifaizebackendapi.DTO.response.UserLoginResponse;
+import org.qualifaizebackendapi.service.UserService;
 import org.qualifaizebackendapi.service.impl.UserServiceImpl;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 @Tag(name = "User Operations", description = "Operations related to user registration and login")
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/auth")
+@RequestMapping("/api/v1/user")
 @RestController
 public class UserController {
 
-    private final UserServiceImpl userServiceImpl;
+    private final UserService userService;
 
     @Operation(
             summary = "Register a new user account",
@@ -37,9 +37,9 @@ public class UserController {
                     )
             }
     )
-    @PostMapping("/register")
+    @PostMapping("/auth/register")
     public ResponseEntity<UserRegisterResponse> register(@RequestBody UserRegisterRequest userRegisterRequestDTO){
-        return ResponseEntity.ok(userServiceImpl.register(userRegisterRequestDTO));
+        return ResponseEntity.ok(userService.register(userRegisterRequestDTO));
     }
 
     @Operation(
@@ -58,9 +58,35 @@ public class UserController {
                     )
             }
     )
-    @PostMapping("/login")
+    @PostMapping("/auth/login")
     public ResponseEntity<UserLoginResponse> login(@RequestBody UserLoginRequest userLoginRequest){
-        return ResponseEntity.ok(userServiceImpl.login(userLoginRequest));
+        return ResponseEntity.ok(userService.login(userLoginRequest));
+    }
+
+    @Operation(
+            summary = "Delete user account",
+            description = "Performs a soft delete on the specified user account, marking it as deleted while preserving the data in the system.",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "204",
+                            description = "User successfully deleted"
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "User not found",
+                            content = @Content(schema = @Schema(implementation = AccessDeniedResponse.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Unauthorized to delete this user",
+                            content = @Content(schema = @Schema(implementation = AccessDeniedResponse.class))
+                    )
+            }
+    )
+    @DeleteMapping("/{userId}")
+    public ResponseEntity<Void> deleteUser(@PathVariable UUID userId){
+        userService.deleteUser(userId);
+        return ResponseEntity.noContent().build();
     }
 
 }

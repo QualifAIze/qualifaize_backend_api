@@ -5,7 +5,10 @@ import org.qualifaizebackendapi.DTO.request.UserRegisterRequest;
 import org.qualifaizebackendapi.DTO.response.UserLoginResponse;
 import org.qualifaizebackendapi.DTO.response.UserRegisterResponse;
 
+import java.util.UUID;
+
 public interface UserService {
     UserLoginResponse login(UserLoginRequest user);
     UserRegisterResponse register(UserRegisterRequest user);
+    void deleteUser(UUID userId);
 }

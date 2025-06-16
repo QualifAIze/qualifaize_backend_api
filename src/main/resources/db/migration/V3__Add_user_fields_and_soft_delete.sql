@@ -1,0 +1,9 @@
+ALTER TABLE users
+    ADD COLUMN first_name VARCHAR(255),
+    ADD COLUMN last_name  VARCHAR(255),
+    ADD COLUMN email      VARCHAR(255),
+    ADD COLUMN created_at TIMESTAMPTZ,
+    ADD COLUMN updated_at TIMESTAMPTZ,
+    ADD COLUMN birth_date TIMESTAMPTZ,
+    ADD COLUMN deleted    BOOLEAN NOT NULL DEFAULT false,
+    ADD COLUMN deleted_at TIMESTAMPTZ;

@@ -3,7 +3,10 @@ package org.qualifaizebackendapi.model;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -12,12 +15,20 @@ import java.util.UUID;
 @Getter
 @Setter
 @Table(name = "users")
-public class User {
+public class User extends SoftDeletable{
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
     private String username;
     private String password;
+    private String firstName;
+    private String lastName;
+    private String email;
+    @CreationTimestamp
+    private OffsetDateTime createdAt;
+    @UpdateTimestamp
+    private OffsetDateTime updatedAt;
+    private OffsetDateTime birthDate;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
