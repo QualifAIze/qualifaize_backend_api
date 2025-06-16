@@ -1,6 +1,5 @@
 package org.qualifaizebackendapi.service.impl;
 
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.qualifaizebackendapi.DTO.db_object.SubsectionRow;
@@ -19,16 +18,16 @@ import org.qualifaizebackendapi.model.Subsection;
 import org.qualifaizebackendapi.repository.PdfRepository;
 import org.qualifaizebackendapi.repository.SubsectionRepository;
 import org.qualifaizebackendapi.service.PdfService;
+import org.qualifaizebackendapi.utils.SecurityUtils;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.*;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.reactive.function.BodyInserters;
-import org.springframework.web.reactive.function.client.ClientResponse;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientRequestException;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
-import reactor.core.publisher.Mono;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -41,231 +40,320 @@ import java.util.stream.Collectors;
 @Slf4j
 public class PdfServiceImpl implements PdfService {
 
-    private final WebClient documentParserServiceWebClient;
+    private final RestClient documentParserRestClient;
     private final PdfRepository pdfRepository;
     private final SubsectionRepository subsectionRepository;
     private final PdfMapper pdfMapper;
     private final SubsectionMapper subsectionMapper;
 
+    // ==================== Public Service Methods ====================
+
     @Override
-    public Mono<UploadedPdfResponse> savePdf(MultipartFile file, String secondaryFileName) {
-
-        if (pdfRepository.existsBySecondaryFileName(secondaryFileName)) {
-            log.warn("Document with secondary filename '{}' already exists", secondaryFileName);
-            throw new DuplicateDocumentException("Document with name '" + secondaryFileName + "' already exists");
-        }
-
-        log.info("Processing PDF upload for file: {} with secondary name: {}",
+    public UploadedPdfResponse savePdf(MultipartFile file, String secondaryFileName) {
+        log.info("Starting PDF upload process for file: {} with secondary name: {}",
                 file.getOriginalFilename(), secondaryFileName);
 
-        return createFileResource(file)
-                .flatMap(this::sendToDocumentParser)
-                .flatMap(response -> Mono.just(processDocumentResponse(response, secondaryFileName)))
-                .map(response -> pdfMapper.toUploadedPdfResponse(response, secondaryFileName))
-                .doOnError(error -> log.error("Failed to process PDF: {}", error.getMessage(), error))
-                .onErrorMap(this::handleProcessingError);
-    }
+        validateUniqueSecondaryFileName(secondaryFileName);
 
+        try {
+            validateUploadedFile(file);
+            ParsedDocumentDetailsResponse parsedResponse = callDocumentParserService(file);
+            Document savedDocument = saveDocumentWithSubsections(parsedResponse, secondaryFileName);
+
+            log.info("PDF upload completed successfully for document ID: {}", savedDocument.getId());
+            return pdfMapper.toUploadedPdfResponse(savedDocument, secondaryFileName);
+
+        } catch (Exception error) {
+            log.error("PDF upload failed for file: {} - {}", file.getOriginalFilename(), error.getMessage(), error);
+            throw handleProcessingError(error);
+        }
+    }
 
     @Override
     public UploadedPdfResponseWithToc getDocumentDetailsAndTocById(UUID documentId) {
-        List<SubsectionDetailsDTO> subsectionData = this.mapToHierarchy(subsectionRepository.fetchFlatToc(documentId));
-        return this.pdfMapper.toUploadedPdfResponseWithToc(this.fetchPdfOrThrow(documentId), subsectionData);
+        log.debug("Retrieving document details with table of contents for ID: {}", documentId);
+
+        Document document = findDocumentByIdOrThrow(documentId);
+        List<SubsectionRow> flatSubsections = subsectionRepository.fetchFlatToc(documentId);
+        List<SubsectionDetailsDTO> hierarchicalSubsections = buildSubsectionHierarchy(flatSubsections);
+
+        return pdfMapper.toUploadedPdfResponseWithToc(document, hierarchicalSubsections);
     }
 
     @Override
     public UploadedPdfResponseWithConcatenatedContent getConcatenatedContentById(UUID documentId, String subsectionName) {
-        return this.objectToPdfWithContentMapper(pdfRepository.
-                findSubsectionContentByTitleAndDocumentId(subsectionName, documentId));
+        log.debug("Retrieving concatenated content for document ID: {} and subsection: {}", documentId, subsectionName);
+
+        List<Object[]> contentData = pdfRepository.findSubsectionContentByTitleAndDocumentId(subsectionName, documentId);
+        return mapToContentResponse(contentData);
     }
 
     @Override
     public UploadedPdfResponse changeDocumentSecondaryFilename(UUID documentId, String newTitle) {
-        Document documentToUpdate = this.fetchPdfOrThrow(documentId);
-        documentToUpdate.setSecondaryFileName(newTitle);
-        return this.pdfMapper.toUploadedPdfResponseFromOnlyDocument(pdfRepository.save(documentToUpdate));
+        log.info("Updating secondary filename for document ID: {} to: {}", documentId, newTitle);
+
+        Document document = findDocumentByIdOrThrow(documentId);
+        document.setSecondaryFileName(newTitle);
+        Document updatedDocument = pdfRepository.save(document);
+
+        return pdfMapper.toUploadedPdfResponseFromOnlyDocument(updatedDocument);
     }
 
     @Override
     public List<UploadedPdfResponse> getAllDocuments() {
-        return this.pdfMapper.toUploadedPdfResponsesFromOnlyDocuments(this.pdfRepository.findAll());
+        log.debug("Retrieving all documents");
+
+        List<Document> documents = pdfRepository.findAll();
+        return pdfMapper.toUploadedPdfResponsesFromOnlyDocuments(documents);
     }
 
     @Override
     public void deleteDocument(UUID documentId) {
-        pdfRepository.delete(this.fetchPdfOrThrow(documentId));
+        log.info("Deleting document with ID: {}", documentId);
+
+        Document document = findDocumentByIdOrThrow(documentId);
+        pdfRepository.delete(document);
+
+        log.info("Document deleted successfully: {}", documentId);
     }
 
-    private Document fetchPdfOrThrow(UUID documentId) {
-        return pdfRepository.findById(documentId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        String.format("PDF document not found with id: %s", documentId)
-                ));
-    }
+    // ==================== File Upload & Processing ====================
 
-    public List<SubsectionDetailsDTO> mapToHierarchy(List<SubsectionRow> rows) {
-        if (rows == null || rows.isEmpty()) {
-            return new ArrayList<>();
+    private void validateUniqueSecondaryFileName(String secondaryFileName) {
+        if (pdfRepository.existsBySecondaryFileName(secondaryFileName)) {
+            String message = "Document with name '" + secondaryFileName + "' already exists";
+            log.warn("Duplicate secondary filename detected: {}", secondaryFileName);
+            throw new DuplicateDocumentException(message);
         }
-
-        Map<UUID, List<SubsectionRow>> childrenByParent = rows.stream()
-                .collect(Collectors.groupingBy(
-                        row -> row.getParentId() != null ? row.getParentId() : UUID.fromString("00000000-0000-0000-0000-000000000000"),
-                        Collectors.toList()
-                ));
-
-        childrenByParent.values().forEach(children ->
-                children.sort(Comparator.comparingInt(SubsectionRow::getPosition))
-        );
-
-        List<SubsectionRow> rootRows = rows.stream()
-                .filter(row -> row.getParentId() == null)
-                .sorted(Comparator.comparingInt(SubsectionRow::getPosition))
-                .toList();
-
-        return rootRows.stream()
-                .map(row -> addChildrenToParent(row, childrenByParent))
-                .collect(Collectors.toList());
     }
 
-    private SubsectionDetailsDTO addChildrenToParent(SubsectionRow row, Map<UUID, List<SubsectionRow>> childrenByParent) {
-        SubsectionDetailsDTO dto = subsectionMapper.toSubsectionDetailsDTO(row);
-
-        List<SubsectionRow> children = childrenByParent.getOrDefault(row.getId(), new ArrayList<>());
-
-        List<SubsectionDetailsDTO> childDTOs = children.stream()
-                .map(child -> addChildrenToParent(child, childrenByParent))
-                .collect(Collectors.toList());
-
-        dto.setSubsections(childDTOs);
-
-        return dto;
-    }
-
-    private void validateFile(MultipartFile file) {
+    private void validateUploadedFile(MultipartFile file) {
         if (file.isEmpty()) {
             throw new IllegalArgumentException("File cannot be empty");
         }
-        if (file.getOriginalFilename() == null || file.getOriginalFilename().trim().isEmpty()) {
+
+        String filename = file.getOriginalFilename();
+        if (filename == null || filename.trim().isEmpty()) {
             throw new IllegalArgumentException("File must have a valid filename");
         }
+
         if (!Objects.equals(file.getContentType(), "application/pdf")) {
             throw new IllegalArgumentException("File must be a PDF document");
         }
+
+        log.debug("File validation passed for: {}", filename);
     }
 
-    private Mono<ParsedDocumentDetailsResponse> sendToDocumentParser(ByteArrayResource fileResource) {
-        log.debug("Sending file to document parser service: {}", fileResource.getFilename());
+    private ParsedDocumentDetailsResponse callDocumentParserService(MultipartFile file) {
+        log.debug("Sending file to document parser service: {}", file.getOriginalFilename());
 
-        return documentParserServiceWebClient
-                .post()
-                .uri("/parse")
-                .contentType(MediaType.MULTIPART_FORM_DATA)
-                .body(BodyInserters.fromMultipartData("file", fileResource))
-                .retrieve()
-                .onStatus(HttpStatusCode::isError, this::handleHttpError)
-                .bodyToMono(ParsedDocumentDetailsResponse.class)
-                .doOnSuccess(response -> log.info("Successfully parsed document: {}",
-                        response != null ? response.getOriginalFilename() : "unknown"));
+        try {
+            MultiValueMap<String, Object> requestBody = createMultipartRequestBody(file);
+
+            ParsedDocumentDetailsResponse response = documentParserRestClient
+                    .post()
+                    .uri("/parse")
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .body(requestBody)
+                    .retrieve()
+                    .body(ParsedDocumentDetailsResponse.class);
+
+            String responseFilename = response != null ? response.getOriginalFilename() : "unknown";
+            log.info("Document parsing completed successfully: {}", responseFilename);
+
+            return response;
+
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read file bytes from uploaded file", e);
+        } catch (RestClientResponseException e) {
+            String errorMessage = String.format("Document parser service error [%d]: %s",
+                    e.getStatusCode().value(), e.getResponseBodyAsString());
+            throw new RuntimeException(errorMessage, e);
+        } catch (RestClientException e) {
+            throw new RuntimeException("Document parser service request failed: " + e.getMessage(), e);
+        }
     }
 
-    private Mono<? extends Throwable> handleHttpError(ClientResponse response) {
-        return response.bodyToMono(String.class)
-                .defaultIfEmpty("Unknown error")
-                .map(errorBody -> new RuntimeException(
-                        String.format("Document parser service error [%d]: %s",
-                                response.statusCode().value(), errorBody)));
+    private MultiValueMap<String, Object> createMultipartRequestBody(MultipartFile file) throws IOException {
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+
+        ByteArrayResource fileResource = new ByteArrayResource(file.getBytes()) {
+            @Override
+            public String getFilename() {
+                return file.getOriginalFilename();
+            }
+        };
+
+        body.add("file", fileResource);
+        return body;
     }
 
-    private Document processDocumentResponse(ParsedDocumentDetailsResponse response, String secondaryFileName) {
+    // ==================== Document & Subsection Processing ====================
+
+    private Document saveDocumentWithSubsections(ParsedDocumentDetailsResponse response, String secondaryFileName) {
         if (response == null) {
-            log.warn("Received null response from document parser");
+            log.warn("Received null response from document parser service");
             return new Document();
         }
 
-        Document savedDocument = pdfRepository.save(this.mapToDocument(response, secondaryFileName));
+        Document document = createDocumentFromResponse(response, secondaryFileName);
+        document.setUploadedByUser(SecurityUtils.getCurrentUser());
+        Document savedDocument = pdfRepository.save(document);
 
-        log.info("Document processing completed successfully:");
-        log.info("  DocumentId: {}", savedDocument.getId());
-        log.info("  Original filename: {}", savedDocument.getFileName());
-        log.info("  Secondary filename: {}", savedDocument.getSecondaryFileName());
-        log.info("  Content sections: {}", savedDocument.getSubsections() != null ? savedDocument.getSubsections().size() : 0);
-
+        logDocumentSaveSuccess(savedDocument);
         return savedDocument;
     }
 
-    private Document mapToDocument(ParsedDocumentDetailsResponse response, String secondaryFileName) {
+    private Document createDocumentFromResponse(ParsedDocumentDetailsResponse response, String secondaryFileName) {
         Document document = pdfMapper.toDocument(response, secondaryFileName);
-        List<SubsectionWithContent> allSubsectionsBeforeMapping = response.getTocWithContent().getSubsections();
+
+        List<SubsectionWithContent> parsedSubsections = extractSubsectionsFromResponse(response);
         List<Subsection> mappedSubsections = new ArrayList<>();
         document.setSubsections(mappedSubsections);
-        mapSubsections(mappedSubsections, allSubsectionsBeforeMapping, document, null, 0);
+
+        mapSubsectionsRecursively(mappedSubsections, parsedSubsections, document, null, 0);
+
         return document;
     }
 
-    private void mapSubsections(List<Subsection> mappedSubsections, List<SubsectionWithContent> subsectionsToBeMapped,
-                                Document document, Subsection parent, int level) {
-        if (subsectionsToBeMapped == null) return;
+    private List<SubsectionWithContent> extractSubsectionsFromResponse(ParsedDocumentDetailsResponse response) {
+        return response.getTocWithContent() != null ?
+                response.getTocWithContent().getSubsections() :
+                new ArrayList<>();
+    }
 
-        for (int i = 0; i < subsectionsToBeMapped.size(); i++) {
-            SubsectionWithContent unmappedSubsection = subsectionsToBeMapped.get(i);
-            Subsection mappedSubsection = pdfMapper.mapToSubsection(unmappedSubsection, parent, document, level, i);
-            if (parent == null) {
-                mappedSubsections.add(mappedSubsection);
-            } else {
-                parent.getChildren().add(mappedSubsection);
-            }
-            mapSubsections(mappedSubsections, unmappedSubsection.getSubsections(), document, mappedSubsection, level + 1);
-
+    private void mapSubsectionsRecursively(List<Subsection> mappedSubsections,
+                                           List<SubsectionWithContent> subsectionsToMap,
+                                           Document document,
+                                           Subsection parent,
+                                           int level) {
+        if (subsectionsToMap == null || subsectionsToMap.isEmpty()) {
+            return;
         }
+
+        for (int position = 0; position < subsectionsToMap.size(); position++) {
+            SubsectionWithContent subsectionToMap = subsectionsToMap.get(position);
+            Subsection mappedSubsection = pdfMapper.mapToSubsection(subsectionToMap, parent, document, level, position);
+
+            addSubsectionToParent(mappedSubsection, parent, mappedSubsections);
+            mapSubsectionsRecursively(mappedSubsections, subsectionToMap.getSubsections(),
+                    document, mappedSubsection, level + 1);
+        }
+    }
+
+    private void addSubsectionToParent(Subsection subsection, Subsection parent, List<Subsection> rootSubsections) {
+        if (parent == null) {
+            rootSubsections.add(subsection);
+        } else {
+            parent.getChildren().add(subsection);
+        }
+    }
+
+    private void logDocumentSaveSuccess(Document document) {
+        int subsectionCount = document.getSubsections() != null ? document.getSubsections().size() : 0;
+
+        log.info("Document saved successfully:");
+        log.info("  - Document ID: {}", document.getId());
+        log.info("  - Original filename: {}", document.getFileName());
+        log.info("  - Secondary filename: {}", document.getSecondaryFileName());
+        log.info("  - Total subsections: {}", subsectionCount);
+    }
+
+    // ==================== Table of Contents Processing ====================
+
+    public List<SubsectionDetailsDTO> buildSubsectionHierarchy(List<SubsectionRow> flatSubsections) {
+        if (flatSubsections == null || flatSubsections.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        Map<UUID, List<SubsectionRow>> childrenByParentId = groupSubsectionsByParent(flatSubsections);
+        sortSubsectionsByPosition(childrenByParentId);
+        List<SubsectionRow> rootSubsections = findRootSubsections(flatSubsections);
+
+        return convertToHierarchicalStructure(rootSubsections, childrenByParentId);
+    }
+
+    private Map<UUID, List<SubsectionRow>> groupSubsectionsByParent(List<SubsectionRow> subsections) {
+        UUID nullParentKey = UUID.fromString("00000000-0000-0000-0000-000000000000");
+
+        return subsections.stream()
+                .collect(Collectors.groupingBy(
+                        row -> row.getParentId() != null ? row.getParentId() : nullParentKey,
+                        Collectors.toList()
+                ));
+    }
+
+    private void sortSubsectionsByPosition(Map<UUID, List<SubsectionRow>> childrenByParent) {
+        childrenByParent.values().forEach(children ->
+                children.sort(Comparator.comparingInt(SubsectionRow::getPosition))
+        );
+    }
+
+    private List<SubsectionRow> findRootSubsections(List<SubsectionRow> subsections) {
+        return subsections.stream()
+                .filter(row -> row.getParentId() == null)
+                .sorted(Comparator.comparingInt(SubsectionRow::getPosition))
+                .toList();
+    }
+
+    private List<SubsectionDetailsDTO> convertToHierarchicalStructure(List<SubsectionRow> rootSubsections,
+                                                                      Map<UUID, List<SubsectionRow>> childrenByParent) {
+        return rootSubsections.stream()
+                .map(root -> buildSubsectionWithChildren(root, childrenByParent))
+                .collect(Collectors.toList());
+    }
+
+    private SubsectionDetailsDTO buildSubsectionWithChildren(SubsectionRow subsection,
+                                                             Map<UUID, List<SubsectionRow>> childrenByParent) {
+        SubsectionDetailsDTO dto = subsectionMapper.toSubsectionDetailsDTO(subsection);
+
+        List<SubsectionRow> children = childrenByParent.getOrDefault(subsection.getId(), new ArrayList<>());
+        List<SubsectionDetailsDTO> childDTOs = children.stream()
+                .map(child -> buildSubsectionWithChildren(child, childrenByParent))
+                .collect(Collectors.toList());
+
+        dto.setSubsections(childDTOs);
+        return dto;
+    }
+
+    // ==================== Utility Methods ====================
+
+    private Document findDocumentByIdOrThrow(UUID documentId) {
+        return pdfRepository.findById(documentId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        String.format("PDF document not found with ID: %s", documentId)
+                ));
+    }
+
+    private UploadedPdfResponseWithConcatenatedContent mapToContentResponse(List<Object[]> contentData) {
+        if (contentData == null || contentData.isEmpty()) {
+            throw new ResourceNotFoundException("No content found for the specified document and subsection");
+        }
+
+        Object[] row = contentData.getFirst();
+        return new UploadedPdfResponseWithConcatenatedContent(
+                (UUID) row[3],           // documentId
+                (String) row[0],         // filename
+                (String) row[1],         // secondaryFilename
+                ((Instant) row[2]).atOffset(ZoneOffset.UTC), // createdAt
+                (String) row[4],         // sectionTitle
+                (String) row[5],         // content
+                (Long) row[6]            // subsectionsCount
+        );
     }
 
     private RuntimeException handleProcessingError(Throwable error) {
-        String errorMessage = "Failed to process PDF document";
+        String baseErrorMessage = "Failed to process PDF document";
 
         return switch (error) {
-            case DuplicateDocumentException ignore -> new DuplicateDocumentException(error.getMessage());
-            case IllegalArgumentException ignored -> new IllegalArgumentException(error.getMessage(), error);
-            case WebClientResponseException webError -> new RuntimeException(
+            case DuplicateDocumentException e -> e;
+            case IllegalArgumentException e -> new IllegalArgumentException(e.getMessage(), e);
+            case RestClientResponseException e -> new RuntimeException(
                     String.format("%s - Service error [%d]: %s",
-                            errorMessage, webError.getStatusCode().value(), webError.getMessage()),
-                    error);
-            case WebClientRequestException ignored -> new RuntimeException(errorMessage + " - Request timeout", error);
-            case null, default -> new RuntimeException(errorMessage, error);
+                            baseErrorMessage, e.getStatusCode().value(), e.getResponseBodyAsString()), e);
+            case RestClientException e -> new RuntimeException(
+                    baseErrorMessage + " - Request failed: " + e.getMessage(), e);
+            case null, default -> new RuntimeException(baseErrorMessage, error);
         };
-    }
-
-    private Mono<ByteArrayResource> createFileResource(MultipartFile file) {
-        return Mono.fromCallable(() -> {
-            validateFile(file);
-            return new ByteArrayResource(extractFileBytes(file)) {
-                @Override
-                public String getFilename() {
-                    return file.getOriginalFilename();
-                }
-            };
-        });
-    }
-
-    private byte[] extractFileBytes(MultipartFile file) {
-        try {
-            return file.getBytes();
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to extract bytes from uploaded file", e);
-        }
-    }
-
-    private UploadedPdfResponseWithConcatenatedContent objectToPdfWithContentMapper(List<Object[]> data) {
-        Object[] source = data.getFirst();
-        String filename = (String) source[0];
-        String secondaryFilename = (String) source[1];
-        Instant creationDate = (Instant) source[2];
-        UUID documentId = (UUID) source[3];
-        String sectionTitle = (String) source[4];
-        String content = (String) source[5];
-        Long subsectionsCount =  (Long) source[6];
-
-        return new UploadedPdfResponseWithConcatenatedContent(documentId, filename, secondaryFilename,
-                creationDate.atOffset(ZoneOffset.UTC), sectionTitle, content, subsectionsCount);
     }
 }

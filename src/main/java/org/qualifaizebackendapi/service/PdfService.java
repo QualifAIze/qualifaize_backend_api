@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface PdfService {
-    Mono<UploadedPdfResponse> savePdf(MultipartFile file, String secondaryFileName);
+    UploadedPdfResponse savePdf(MultipartFile file, String secondaryFileName);
     UploadedPdfResponse changeDocumentSecondaryFilename(UUID documentId, String newTitle);
     UploadedPdfResponseWithToc getDocumentDetailsAndTocById(UUID documentId);
     UploadedPdfResponseWithConcatenatedContent getConcatenatedContentById(UUID documentId, String subsectionName);

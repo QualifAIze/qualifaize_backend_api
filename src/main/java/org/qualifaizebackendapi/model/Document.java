@@ -35,6 +35,10 @@ public class Document {
     @Column(nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "uploaded_by_user_id")
+    private User uploadedByUser;
+
     @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Subsection> subsections = new ArrayList<>();
 

@@ -34,9 +34,9 @@ public class SecurityConfig {
                 .sessionManagement(sessionManagement -> sessionManagement
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
-                        .requestMatchers("/api/v1/user/auth/**", "/api/v1/pdf/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/", "/error").permitAll()
+                        .requestMatchers("/api/v1/user/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/", "/error").permitAll()
                         .requestMatchers("/user").hasAnyRole("ADMIN", "USER")
-                        .requestMatchers("/admin", "/api/v1/user/**").hasRole("ADMIN")
+                        .requestMatchers("/admin", "/api/v1/pdf/**", "/api/v1/user/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .exceptionHandling(exception -> exception
                         .accessDeniedHandler(accessDeniedHandler)

@@ -46,14 +46,15 @@ public class PdfController {
             @ApiResponse(responseCode = "409", description = "Already saved pdf document",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    public Mono<UploadedPdfResponse> uploadPdf(
+    public ResponseEntity<UploadedPdfResponse> uploadPdf(
             @Parameter(description = "PDF file to upload", required = true, content = @Content(mediaType = "application/pdf"))
             @RequestParam("file") MultipartFile file,
 
             @Parameter(description = "Required secondary file name", required = true)
             @RequestParam(value = "secondary_file_name") String secondaryFileName
     ) {
-        return pdfService.savePdf(file, secondaryFileName);
+        UploadedPdfResponse response = pdfService.savePdf(file, secondaryFileName);
+        return ResponseEntity.ok(response);
     }
 
 
