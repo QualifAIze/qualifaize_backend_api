@@ -8,8 +8,7 @@ import org.qualifaizebackendapi.DTO.response.UserRegisterResponse;
 import org.qualifaizebackendapi.DTO.response.UserLoginResponse;
 import org.qualifaizebackendapi.exception.ResourceNotFoundException;
 import org.qualifaizebackendapi.mapper.UserMapper;
-import org.qualifaizebackendapi.model.Document;
-import org.qualifaizebackendapi.model.Role;
+import org.qualifaizebackendapi.model.enums.Role;
 import org.qualifaizebackendapi.model.User;
 import org.qualifaizebackendapi.repository.UserRepository;
 import org.qualifaizebackendapi.security.JwtService;
@@ -23,7 +22,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.UUID;

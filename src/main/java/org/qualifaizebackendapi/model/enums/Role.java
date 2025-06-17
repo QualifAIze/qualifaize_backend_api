@@ -1,4 +1,4 @@
-package org.qualifaizebackendapi.model;
+package org.qualifaizebackendapi.model.enums;
 
 public enum Role {
     GUEST,

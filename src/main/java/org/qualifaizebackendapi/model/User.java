@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.qualifaizebackendapi.model.enums.Role;
 
 import java.time.OffsetDateTime;
 import java.util.HashSet;

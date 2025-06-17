@@ -1,7 +1,7 @@
 package org.qualifaizebackendapi.DTO.response;
 
 
-import org.qualifaizebackendapi.model.Role;
+import org.qualifaizebackendapi.model.enums.Role;
 
 import java.util.Set;
 
