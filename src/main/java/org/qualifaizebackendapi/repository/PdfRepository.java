@@ -1,15 +1,34 @@
 package org.qualifaizebackendapi.repository;
 
+import org.qualifaizebackendapi.DTO.db_object.DocumentWithUserRow;
 import org.qualifaizebackendapi.model.Document;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface PdfRepository extends JpaRepository<Document, UUID> {
     boolean existsBySecondaryFileName(String secondaryFileName);
+
+    @Query("""
+            SELECT new org.qualifaizebackendapi.DTO.db_object.DocumentWithUserRow(u.id, u.username, u.firstName,
+                        u.lastName, d.id, d.fileName, d.secondaryFileName, d.createdAt)
+            FROM Document d
+            JOIN User u ON d.uploadedByUser.id = u.id
+            """)
+    List<DocumentWithUserRow> getAllDocumentWithUserDetails();
+
+    @Query("""
+            SELECT new org.qualifaizebackendapi.DTO.db_object.DocumentWithUserRow(u.id, u.username, u.firstName,
+                        u.lastName, d.id, d.fileName, d.secondaryFileName, d.createdAt)
+            FROM Document d
+            JOIN User u ON d.uploadedByUser.id = u.id
+            WHERE d.id = :documentId
+            """)
+    Optional<DocumentWithUserRow> getDocumentWithUserDetails(UUID documentId);
 
     @Query(value = """
             WITH RECURSIVE subsection_descendants AS (

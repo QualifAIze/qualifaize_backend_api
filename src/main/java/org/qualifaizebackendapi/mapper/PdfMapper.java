@@ -1,41 +1,27 @@
 package org.qualifaizebackendapi.mapper;
 
-import org.mapstruct.InheritConfiguration;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.Named;
+import org.mapstruct.*;
+import org.qualifaizebackendapi.DTO.db_object.DocumentWithUserRow;
 import org.qualifaizebackendapi.DTO.parseDTO.ParsedDocumentDetailsResponse;
-import org.qualifaizebackendapi.DTO.parseDTO.SubsectionWithContent;
 import org.qualifaizebackendapi.DTO.response.pdf.UploadedPdfResponse;
 import org.qualifaizebackendapi.DTO.response.pdf.table_of_contents_response.SubsectionDetailsDTO;
 import org.qualifaizebackendapi.DTO.response.pdf.table_of_contents_response.UploadedPdfResponseWithToc;
 import org.qualifaizebackendapi.model.Document;
-import org.qualifaizebackendapi.model.Subsection;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = UserMapper.class)
 public interface PdfMapper {
 
-    @Mapping(target = "filename", source = "parsedResponse.fileName")
-    @Mapping(target = "secondaryFilename", source = "secondaryFilename")
-    @Mapping(target = "createdAt", source = "parsedResponse.createdAt")
-    @Mapping(target = "id", source = "parsedResponse.id")
-    UploadedPdfResponse toUploadedPdfResponse(Document parsedResponse, String secondaryFilename);
+    @Named("toUploadedPdfResponse")
+    @Mapping(target = "uploadedBy", source = "dbData", qualifiedByName = "toUserOverviewResponseFromDocumentWithUserRow")
+    UploadedPdfResponse toUploadedPdfResponse(DocumentWithUserRow dbData);
 
-    @Mapping(target = "filename", source = "documentFromDB.fileName")
-    @Mapping(target = "secondaryFilename", source = "documentFromDB.secondaryFileName")
-    @Mapping(target = "createdAt", source = "documentFromDB.createdAt")
-    @Mapping(target = "id", source = "documentFromDB.id")
-    UploadedPdfResponse toUploadedPdfResponseFromOnlyDocument(Document documentFromDB);
+    @IterableMapping(qualifiedByName = "toUploadedPdfResponse")
+    List<UploadedPdfResponse> toUploadedPdfResponses(List<DocumentWithUserRow> dbData);
 
-    List<UploadedPdfResponse> toUploadedPdfResponsesFromOnlyDocuments(List<Document> documentsFromDB);
-
-    @InheritConfiguration(name = "toUploadedPdfResponseFromOnlyDocument")
-    @Mapping(target = "filename", source = "documentFromDB.fileName")
-    @Mapping(target = "secondaryFilename", source = "documentFromDB.secondaryFileName")
-    @Mapping(target = "subsections", source = "subsections")
-    UploadedPdfResponseWithToc toUploadedPdfResponseWithToc(Document documentFromDB, List<SubsectionDetailsDTO> subsections);
+    @InheritConfiguration(name = "toUploadedPdfResponse")
+    UploadedPdfResponseWithToc toUploadedPdfResponseWithToc(DocumentWithUserRow dbData);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "subsections", ignore = true)
@@ -44,17 +30,6 @@ public interface PdfMapper {
     @Mapping(target = "fileName", source = "parsedResponse.originalFilename")
     @Mapping(target = "secondaryFileName", source = "secondaryFilename")
     Document toDocument(ParsedDocumentDetailsResponse parsedResponse, String secondaryFilename);
-
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "document", source = "document")
-    @Mapping(target = "parent", source = "parent")
-    @Mapping(target = "children", ignore = true)
-    @Mapping(target = "title", source = "subsection.title")
-    @Mapping(target = "content", source = "subsection.content")
-    @Mapping(target = "position", source = "position")
-    @Mapping(target = "level", source = "level")
-    @Mapping(target = "createdAt", ignore = true)
-    Subsection mapToSubsection(SubsectionWithContent subsection, Subsection parent, Document document, int level, int position);
 
     @Named("extractSubsectionsCount")
     default int extractSubsectionsCount(ParsedDocumentDetailsResponse documentDetails) {

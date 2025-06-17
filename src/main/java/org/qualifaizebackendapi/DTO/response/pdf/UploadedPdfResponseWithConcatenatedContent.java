@@ -1,6 +1,5 @@
 package org.qualifaizebackendapi.DTO.response.pdf;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;

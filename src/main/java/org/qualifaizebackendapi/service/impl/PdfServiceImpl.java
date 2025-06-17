@@ -2,6 +2,7 @@ package org.qualifaizebackendapi.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.qualifaizebackendapi.DTO.db_object.DocumentWithUserRow;
 import org.qualifaizebackendapi.DTO.db_object.SubsectionRow;
 import org.qualifaizebackendapi.DTO.parseDTO.ParsedDocumentDetailsResponse;
 import org.qualifaizebackendapi.DTO.parseDTO.SubsectionWithContent;
@@ -61,7 +62,7 @@ public class PdfServiceImpl implements PdfService {
             Document savedDocument = saveDocumentWithSubsections(parsedResponse, secondaryFileName);
 
             log.info("PDF upload completed successfully for document ID: {}", savedDocument.getId());
-            return pdfMapper.toUploadedPdfResponse(savedDocument, secondaryFileName);
+            return this.pdfMapper.toUploadedPdfResponse(findDocumentWithUserRowOrThrow(savedDocument.getId()));
 
         } catch (Exception error) {
             log.error("PDF upload failed for file: {} - {}", file.getOriginalFilename(), error.getMessage(), error);
@@ -73,11 +74,10 @@ public class PdfServiceImpl implements PdfService {
     public UploadedPdfResponseWithToc getDocumentDetailsAndTocById(UUID documentId) {
         log.debug("Retrieving document details with table of contents for ID: {}", documentId);
 
-        Document document = findDocumentByIdOrThrow(documentId);
-        List<SubsectionRow> flatSubsections = subsectionRepository.fetchFlatToc(documentId);
-        List<SubsectionDetailsDTO> hierarchicalSubsections = buildSubsectionHierarchy(flatSubsections);
-
-        return pdfMapper.toUploadedPdfResponseWithToc(document, hierarchicalSubsections);
+        UploadedPdfResponseWithToc response = pdfMapper.toUploadedPdfResponseWithToc(this.findDocumentWithUserRowOrThrow(documentId));
+        List<SubsectionDetailsDTO> hierarchicalSubsections = buildSubsectionHierarchy(subsectionRepository.fetchFlatToc(documentId));
+        response.setSubsections(hierarchicalSubsections);
+        return response;
     }
 
     @Override
@@ -92,19 +92,19 @@ public class PdfServiceImpl implements PdfService {
     public UploadedPdfResponse changeDocumentSecondaryFilename(UUID documentId, String newTitle) {
         log.info("Updating secondary filename for document ID: {} to: {}", documentId, newTitle);
 
-        Document document = findDocumentByIdOrThrow(documentId);
+        Document document = this.findDocumentByIdOrThrow(documentId);
         document.setSecondaryFileName(newTitle);
-        Document updatedDocument = pdfRepository.save(document);
+        pdfRepository.save(document);
 
-        return pdfMapper.toUploadedPdfResponseFromOnlyDocument(updatedDocument);
+        return pdfMapper.toUploadedPdfResponse(this.findDocumentWithUserRowOrThrow(documentId));
     }
 
     @Override
     public List<UploadedPdfResponse> getAllDocuments() {
         log.debug("Retrieving all documents");
 
-        List<Document> documents = pdfRepository.findAll();
-        return pdfMapper.toUploadedPdfResponsesFromOnlyDocuments(documents);
+        List<DocumentWithUserRow> documents = pdfRepository.getAllDocumentWithUserDetails();
+        return pdfMapper.toUploadedPdfResponses(documents);
     }
 
     @Override
@@ -233,7 +233,7 @@ public class PdfServiceImpl implements PdfService {
 
         for (int position = 0; position < subsectionsToMap.size(); position++) {
             SubsectionWithContent subsectionToMap = subsectionsToMap.get(position);
-            Subsection mappedSubsection = pdfMapper.mapToSubsection(subsectionToMap, parent, document, level, position);
+            Subsection mappedSubsection = subsectionMapper.mapToSubsection(subsectionToMap, parent, document, level, position);
 
             addSubsectionToParent(mappedSubsection, parent, mappedSubsections);
             mapSubsectionsRecursively(mappedSubsections, subsectionToMap.getSubsections(),
@@ -320,6 +320,13 @@ public class PdfServiceImpl implements PdfService {
 
     private Document findDocumentByIdOrThrow(UUID documentId) {
         return pdfRepository.findById(documentId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        String.format("PDF document not found with ID: %s", documentId)
+                ));
+    }
+
+    private DocumentWithUserRow findDocumentWithUserRowOrThrow(UUID documentId) {
+        return pdfRepository.getDocumentWithUserDetails(documentId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         String.format("PDF document not found with ID: %s", documentId)
                 ));

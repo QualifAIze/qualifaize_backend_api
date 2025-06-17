@@ -16,11 +16,11 @@ import org.qualifaizebackendapi.DTO.response.pdf.UploadedPdfResponseWithConcaten
 import org.qualifaizebackendapi.DTO.response.pdf.table_of_contents_response.UploadedPdfResponseWithToc;
 import org.qualifaizebackendapi.exception.ErrorResponse;
 import org.qualifaizebackendapi.service.PdfService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.UUID;
@@ -39,7 +39,7 @@ public class PdfController {
     )
     @PostMapping(value = "", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "PDF uploaded successfully",
+            @ApiResponse(responseCode = "201", description = "PDF uploaded successfully",
                     content = @Content(schema = @Schema(implementation = UploadedPdfResponse.class))),
             @ApiResponse(responseCode = "400", description = "Invalid file or parameters",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
@@ -54,7 +54,7 @@ public class PdfController {
             @RequestParam(value = "secondary_file_name") String secondaryFileName
     ) {
         UploadedPdfResponse response = pdfService.savePdf(file, secondaryFileName);
-        return ResponseEntity.ok(response);
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
 
