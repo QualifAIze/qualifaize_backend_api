@@ -82,6 +82,15 @@ public class Interview {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    public void setStatus(InterviewStatus status) {
+        switch (status) {
+            case SCHEDULED -> this.schedule();
+            case IN_PROGRESS -> this.start();
+            case COMPLETED -> this.complete();
+            case CANCELLED -> this.cancel();
+        }
+    }
+
     public int getQuestionCount() {
         return questions.size();
     }
@@ -105,17 +114,29 @@ public class Interview {
         return null;
     }
 
+    public void schedule() {
+        if (this.status == InterviewStatus.CANCELLED) {
+            this.status = InterviewStatus.SCHEDULED;
+        }
+    }
+
     public void start() {
-        this.status = InterviewStatus.IN_PROGRESS;
-        this.startTime = OffsetDateTime.now();
+        if (this.status == InterviewStatus.SCHEDULED || this.status == InterviewStatus.CANCELLED) {
+            this.status = InterviewStatus.IN_PROGRESS;
+            this.startTime = OffsetDateTime.now();
+        }
     }
 
     public void complete() {
-        this.status = InterviewStatus.COMPLETED;
-        this.endTime = OffsetDateTime.now();
+            if (this.status == InterviewStatus.IN_PROGRESS) {
+            this.status = InterviewStatus.COMPLETED;
+            this.endTime = OffsetDateTime.now();
+        }
     }
 
     public void cancel() {
-        this.status = InterviewStatus.CANCELLED;
+        if (this.status == InterviewStatus.SCHEDULED) {
+            this.status = InterviewStatus.CANCELLED;
+        }
     }
 }

@@ -1,8 +1,11 @@
 package org.qualifaizebackendapi.service;
 
 import org.qualifaizebackendapi.DTO.request.interview.CreateInterviewRequest;
+import org.qualifaizebackendapi.DTO.response.interview.ChangeInterviewStatusResponse;
+import org.qualifaizebackendapi.DTO.response.interview.CreateInterviewResponse;
 import org.qualifaizebackendapi.exception.ResourceNotFoundException;
 import org.qualifaizebackendapi.exception.DuplicateInterviewException;
+import org.qualifaizebackendapi.model.enums.InterviewStatus;
 
 import java.util.UUID;
 
@@ -21,5 +24,7 @@ public interface InterviewService {
      * @throws IllegalArgumentException if the request contains invalid data
      * @throws DuplicateInterviewException if an interview with the same name already exists for the document
      */
-    UUID createInterview(CreateInterviewRequest request);
+    CreateInterviewResponse createInterview(CreateInterviewRequest request);
+
+    ChangeInterviewStatusResponse updateInterviewStatus(UUID interviewId, InterviewStatus newStatus);
 }
