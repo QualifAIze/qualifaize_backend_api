@@ -3,6 +3,7 @@ package org.qualifaizebackendapi.service;
 import org.qualifaizebackendapi.DTO.response.pdf.UploadedPdfResponse;
 import org.qualifaizebackendapi.DTO.response.pdf.UploadedPdfResponseWithConcatenatedContent;
 import org.qualifaizebackendapi.DTO.response.pdf.table_of_contents_response.UploadedPdfResponseWithToc;
+import org.qualifaizebackendapi.model.Document;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -15,4 +16,6 @@ public interface PdfService {
     UploadedPdfResponseWithConcatenatedContent getConcatenatedContentById(UUID documentId, String subsectionName);
     List<UploadedPdfResponse> getAllDocuments();
     void deleteDocument(UUID documentId);
+
+    Document findDocumentByIdOrThrow(UUID documentId);
 }

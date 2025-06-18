@@ -84,7 +84,7 @@ public class UserServiceImpl implements UserService {
                 .collect(Collectors.toSet());
     }
 
-    private User fetchUserOrThrow(UUID userId) {
+    public User fetchUserOrThrow(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         String.format("User with Id %s was now found!", userId)

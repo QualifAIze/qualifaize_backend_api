@@ -318,7 +318,7 @@ public class PdfServiceImpl implements PdfService {
 
     // ==================== Utility Methods ====================
 
-    private Document findDocumentByIdOrThrow(UUID documentId) {
+    public Document findDocumentByIdOrThrow(UUID documentId) {
         return pdfRepository.findById(documentId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         String.format("PDF document not found with ID: %s", documentId)

@@ -8,7 +8,9 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 import org.qualifaizebackendapi.model.enums.Difficulty;
 
 import java.time.OffsetDateTime;
@@ -36,6 +38,7 @@ public class Question {
 
     @NotNull
     @Enumerated(EnumType.STRING)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
     @Column(nullable = false)
     private Difficulty difficulty = Difficulty.MEDIUM;
 

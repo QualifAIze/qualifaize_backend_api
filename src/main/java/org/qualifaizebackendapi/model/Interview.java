@@ -7,7 +7,9 @@ import lombok.Getter;
 import lombok.Setter;
 import org.aspectj.weaver.patterns.TypePatternQuestions;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 import org.qualifaizebackendapi.model.enums.Difficulty;
 import org.qualifaizebackendapi.model.enums.InterviewStatus;
 
@@ -36,12 +38,14 @@ public class Interview {
 
     @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Column(nullable = false, columnDefinition = "difficulty")
     private Difficulty difficulty = Difficulty.MEDIUM;
 
     @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Column(nullable = false, columnDefinition = "interview_status")
     private InterviewStatus status = InterviewStatus.SCHEDULED;
 
     @Column(name = "scheduled_date")
