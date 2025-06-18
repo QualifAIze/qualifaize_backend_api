@@ -39,9 +39,9 @@ public class UserServiceImpl implements UserService {
 
     public UserRegisterResponse register(UserRegisterRequest userRegisterRequestDTO) {
         User user = new User();
-        user.setUsername(userRegisterRequestDTO.username());
-        user.setPassword(bCryptPasswordEncoder.encode(userRegisterRequestDTO.password()));
-        user.setRoles(parseRoles(userRegisterRequestDTO.roles()));
+        user.setUsername(userRegisterRequestDTO.getUsername());
+        user.setPassword(bCryptPasswordEncoder.encode(userRegisterRequestDTO.getPassword()));
+        user.setRoles(parseRoles(userRegisterRequestDTO.getRoles()));
         User savedUser = userRepository.save(user);
         String token = jwtService.generateToken(savedUser.getUsername());
         return userMapper.userToRegisteredUserResponse(savedUser, token);
@@ -58,7 +58,7 @@ public class UserServiceImpl implements UserService {
         final String INCORRECT_CREDENTIALS_MESSAGE = "Username or password is incorrect";
         try {
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(user.username(), user.password()));
+                    new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword()));
 
             if (!authentication.isAuthenticated()) throw new UsernameNotFoundException(INCORRECT_CREDENTIALS_MESSAGE);
 
@@ -68,7 +68,7 @@ public class UserServiceImpl implements UserService {
             throw new UsernameNotFoundException("Authentication failed: " + e.getMessage());
         }
 
-        return new UserLoginResponse(jwtService.generateToken(user.username()));
+        return new UserLoginResponse(jwtService.generateToken(user.getUsername()));
     }
 
     private static Set<Role> parseRoles(String[] roles) {
