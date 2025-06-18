@@ -13,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.qualifaizebackendapi.DTO.request.interview.CreateInterviewRequest;
 import org.qualifaizebackendapi.DTO.response.interview.ChangeInterviewStatusResponse;
 import org.qualifaizebackendapi.DTO.response.interview.CreateInterviewResponse;
+import org.qualifaizebackendapi.DTO.response.interview.question.QuestionToAsk;
+import org.qualifaizebackendapi.DTO.response.interview.question.SubmitAnswerResponse;
 import org.qualifaizebackendapi.exception.ErrorResponse;
 import org.qualifaizebackendapi.model.enums.InterviewStatus;
 import org.qualifaizebackendapi.service.InterviewService;
@@ -122,5 +124,88 @@ public class InterviewController {
 
         return ResponseEntity.ok(response);
     }
+    @Operation(
+            summary = "Get next interview question",
+            description = "Retrieves the next question to ask in the specified interview"
+    )
+    @GetMapping("/next/{interviewId}")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Next question retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = QuestionToAsk.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid interview ID",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Interview not found or no more questions available",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Insufficient permissions to access interview",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    public ResponseEntity<QuestionToAsk> getNextInterviewQuestion(
+            @Parameter(description = "ID of the interview to get next question for", required = true)
+            @PathVariable UUID interviewId
+    ) {
+        log.info("Getting next question for interview {}", interviewId);
+
+        QuestionToAsk nextQuestion = interviewService.getNextInterviewQuestion(interviewId);
+
+        log.info("Retrieved next question for interview {}: {}", interviewId, nextQuestion.getTitle());
+
+        return ResponseEntity.ok(nextQuestion);
+    }
+
+    @Operation(
+            summary = "Submit answer to interview question",
+            description = "Submits an answer for a specific question and returns the result with feedback"
+    )
+    @GetMapping("/answer/{questionId}")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Answer submitted successfully",
+                    content = @Content(schema = @Schema(implementation = SubmitAnswerResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid question ID or answer format",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Question not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Insufficient permissions to submit answer",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    public ResponseEntity<SubmitAnswerResponse> submitAnswer(
+            @Parameter(description = "ID of the question being answered", required = true)
+            @PathVariable UUID questionId,
+            @Parameter(description = "The user's answer (A, B, C, or D)", required = true)
+            @RequestParam char correctAnswer
+    ) {
+        log.info("Submitting answer '{}' for question {}", correctAnswer, questionId);
+
+        SubmitAnswerResponse response = interviewService.submitAnswer(questionId, correctAnswer);
+
+        log.info("Answer submitted for question {}: {} (Correct: {})",
+                questionId, response.getSubmittedAnswer(), response.isCorrect());
+
+        return ResponseEntity.ok(response);
+    }
 }
+
 

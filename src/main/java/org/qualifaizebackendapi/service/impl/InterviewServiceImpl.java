@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.qualifaizebackendapi.DTO.request.interview.CreateInterviewRequest;
 import org.qualifaizebackendapi.DTO.response.interview.ChangeInterviewStatusResponse;
 import org.qualifaizebackendapi.DTO.response.interview.CreateInterviewResponse;
+import org.qualifaizebackendapi.DTO.response.interview.question.QuestionToAsk;
+import org.qualifaizebackendapi.DTO.response.interview.question.SubmitAnswerResponse;
 import org.qualifaizebackendapi.exception.ResourceNotFoundException;
 import org.qualifaizebackendapi.mapper.InterviewMapper;
 import org.qualifaizebackendapi.model.Document;
@@ -44,6 +46,16 @@ public class InterviewServiceImpl implements InterviewService {
         interviewToUpdate.setStatus(newStatus);
         Interview updatedInterview = interviewRepository.save(interviewToUpdate);
         return new ChangeInterviewStatusResponse(updatedInterview.getId(), updatedInterview.getStatus());
+    }
+
+    @Override
+    public QuestionToAsk getNextInterviewQuestion(UUID interviewId) {
+        return null;
+    }
+
+    @Override
+    public SubmitAnswerResponse submitAnswer(UUID questionId, char userAnswer) {
+        return null;
     }
 
     public Interview fetchInterviewOrThrow(UUID interviewId) {
