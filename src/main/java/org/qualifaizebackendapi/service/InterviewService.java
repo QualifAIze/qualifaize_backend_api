@@ -57,5 +57,5 @@ public interface InterviewService {
      * @throws ResourceNotFoundException if the question doesn't exist
      * @throws IllegalArgumentException if the answer format is invalid
      */
-    SubmitAnswerResponse submitAnswer(UUID questionId, char userAnswer);
+    SubmitAnswerResponse submitAnswer(UUID questionId, String userAnswer);
 }

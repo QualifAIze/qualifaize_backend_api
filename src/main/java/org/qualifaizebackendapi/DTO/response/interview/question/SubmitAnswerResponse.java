@@ -19,10 +19,10 @@ public class SubmitAnswerResponse {
     private UUID questionId;
 
     @Schema(description = "The answer submitted by the user", example = "A")
-    private char submittedAnswer;
+    private String submittedAnswer;
 
     @Schema(description = "The correct answer for the question", example = "A")
-    private char correctAnswer;
+    private String correctAnswer;
 
     @Schema(description = "Whether the submitted answer was correct", example = "true")
     private boolean isCorrect;
@@ -31,5 +31,5 @@ public class SubmitAnswerResponse {
     private String explanation;
 
     @Schema(description = "Current percentage in the interview", example = "75.0")
-    private Double currentProgress;
+    private Integer currentProgress;
 }

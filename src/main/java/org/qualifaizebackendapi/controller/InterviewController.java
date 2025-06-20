@@ -194,8 +194,8 @@ public class InterviewController {
     public ResponseEntity<SubmitAnswerResponse> submitAnswer(
             @Parameter(description = "ID of the question being answered", required = true)
             @PathVariable UUID questionId,
-            @Parameter(description = "The user's answer (A, B, C, or D)", required = true)
-            @RequestParam char correctAnswer
+            @Parameter(description = "The user's answer (A, a, B, b, C, c, D or d)", required = true)
+            @RequestParam String correctAnswer
     ) {
         log.info("Submitting answer '{}' for question {}", correctAnswer, questionId);
 

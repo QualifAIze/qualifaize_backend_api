@@ -94,9 +94,14 @@ public class Question {
      * @throws IllegalArgumentException if the answer is not valid
      */
     public void submitAnswer(String answer) {
-        if (answer == null || !answer.matches("[ABCD]")) {
-            throw new IllegalArgumentException("Answer must be A, B, C, or D");
+        if (answer == null || !answer.matches("[AaBbCcDd]")) {
+            throw new IllegalArgumentException("Answer must be A, a, B, b, C, c, D or d");
         }
+
+        if (submittedAnswer != null) {
+            throw new  IllegalArgumentException("Answer already exists");
+        }
+
         this.submittedAnswer = answer.toUpperCase();
         this.answeredAt = OffsetDateTime.now();
     }

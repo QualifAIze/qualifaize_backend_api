@@ -13,5 +13,7 @@ Return only a JSON object containing:
     the question text
     all answer options (optionA, optionB, optionC or optionD)
     the correct answer (A, B, C or D)
+    difficulty of generated question (EASY, MEDIUM or HARD)
+    explanation of the correct answer
 
 Do not repeat any previous questions.

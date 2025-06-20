@@ -82,7 +82,7 @@ public class PdfServiceImpl implements PdfService {
 
     @Override
     public UploadedPdfResponseWithConcatenatedContent getConcatenatedContentById(UUID documentId, String subsectionName) {
-        log.debug("Retrieving concatenated content for document ID: {} and subsection: {}", documentId, subsectionName);
+        log.info("Retrieving concatenated content for document ID: {} and subsection: {}", documentId, subsectionName);
 
         List<Object[]> contentData = pdfRepository.findSubsectionContentByTitleAndDocumentId(subsectionName, documentId);
         return mapToContentResponse(contentData);
