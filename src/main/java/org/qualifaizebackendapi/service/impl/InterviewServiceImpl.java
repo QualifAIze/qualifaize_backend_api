@@ -3,7 +3,8 @@ package org.qualifaizebackendapi.service.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.qualifaizebackendapi.DTO.request.interview.CreateInterviewRequest;
-import org.qualifaizebackendapi.DTO.response.QuestionSectionResponse;
+import org.qualifaizebackendapi.DTO.response.interview.question.GenerateQuestionDTO;
+import org.qualifaizebackendapi.DTO.response.interview.question.QuestionSectionResponse;
 import org.qualifaizebackendapi.DTO.response.interview.ChangeInterviewStatusResponse;
 import org.qualifaizebackendapi.DTO.response.interview.CreateInterviewResponse;
 import org.qualifaizebackendapi.DTO.response.interview.question.QuestionToAsk;
@@ -15,6 +16,7 @@ import org.qualifaizebackendapi.mapper.InterviewMapper;
 import org.qualifaizebackendapi.model.Document;
 import org.qualifaizebackendapi.model.Interview;
 import org.qualifaizebackendapi.model.User;
+import org.qualifaizebackendapi.model.enums.Difficulty;
 import org.qualifaizebackendapi.model.enums.InterviewStatus;
 import org.qualifaizebackendapi.repository.InterviewRepository;
 import org.qualifaizebackendapi.service.InterviewService;
@@ -46,6 +48,9 @@ public class InterviewServiceImpl implements InterviewService {
     @Value("classpath:prompts/content_selection/sectionSelectionUserPrompt.st")
     private Resource contentSelectionUserPrompt;
 
+    @Value("classpath:prompts/question_generation/generateQuestionUserPrompt.st")
+    private Resource questionGenerationUserPrompt;
+
     @Override
     public CreateInterviewResponse createInterview(CreateInterviewRequest request) {
         Document documentToCreateTheInterview = pdfService.findDocumentByIdOrThrow(request.getDocumentId());
@@ -67,8 +72,7 @@ public class InterviewServiceImpl implements InterviewService {
     @Override
     public QuestionToAsk getNextInterviewQuestion(UUID interviewId) {
         QuestionSectionResponse questionSectionResponse = this.chooseSectionToGenerateQuestion(interviewId);
-        UUID documentId = interviewRepository.findDocumentIdByInterviewId(interviewId);
-        UploadedPdfResponseWithConcatenatedContent contentOfChoosenSection = pdfService.getConcatenatedContentById(documentId, questionSectionResponse.getTitle());
+        GenerateQuestionDTO generatedQuestion = this.generateNextQuestion(interviewId, questionSectionResponse);
         return null;
     }
 
@@ -85,29 +89,62 @@ public class InterviewServiceImpl implements InterviewService {
     }
 
     private QuestionSectionResponse chooseSectionToGenerateQuestion(UUID interviewId) {
-        ChatClient client = aiClientFactory.generateContentSelectionClient(OpenAiApi.ChatModel.GPT_4_1_NANO);
+        ChatClient client = aiClientFactory.createContentSelectionClient(OpenAiApi.ChatModel.GPT_4_1_NANO);
         try {
             return client
                     .prompt()
-                    .user(u -> u.text(contentSelectionUserPrompt).params(this.collectPromptParams(interviewId)))
+                    .user(u -> u.text(contentSelectionUserPrompt).params(this.collectContentSelectionPromptParams(interviewId)))
                     .call()
                     .entity(QuestionSectionResponse.class);
         } catch (Exception e) {
-            log.error("Error generating AI message", e);
+            log.error("Error while choosing section!", e);
             throw e;
         } finally {
-            log.info("AI message generation process completed");
+            log.info("AI content selection process completed");
         }
     }
 
-    private Map<String, Object> collectPromptParams(UUID interviewId) {
+    private GenerateQuestionDTO generateQuestion(UUID interviewId, String contentToGenerateQuestion) {
+        ChatClient client = aiClientFactory.createQuestionGenerationClient(OpenAiApi.ChatModel.GPT_4_O);
+        try {
+            return client
+                    .prompt()
+                    .user(u -> u.text(questionGenerationUserPrompt).params(this
+                            .collectQuestionGenerationPromptParams(interviewId, contentToGenerateQuestion)))
+                    .call()
+                    .entity(GenerateQuestionDTO.class);
+        } catch (Exception e) {
+            log.error("Error while generating question!", e);
+            throw e;
+        } finally {
+            log.info("AI question generation process completed");
+        }
+    }
+
+    private GenerateQuestionDTO generateNextQuestion(UUID interviewId, QuestionSectionResponse chosenSectionToGenerateQuestion) {
+        UUID documentId = interviewRepository.findDocumentIdByInterviewId(interviewId);
+        UploadedPdfResponseWithConcatenatedContent contentOfChosenSection = pdfService
+                .getConcatenatedContentById(documentId, chosenSectionToGenerateQuestion.getTitle());
+
+        GenerateQuestionDTO generatedQuestion = this.generateQuestion(interviewId, contentOfChosenSection.getContent());
+        return null;
+    }
+
+    private Map<String, Object> collectContentSelectionPromptParams(UUID interviewId) {
         UUID documentId = this.interviewRepository.findDocumentIdByInterviewId(interviewId);
         UploadedPdfResponseWithToc documentTocDetails = pdfService.getDocumentDetailsAndTocById(documentId);
         List<String> previouslyAskedQuestions = this.interviewRepository.findQuestionTitlesByInterviewId(interviewId);
         String previouslyAskedQuestionsString = this.createTextForAnsweredQuestions(previouslyAskedQuestions);
-
         log.info("Creating prompt for section selection");
         return Map.of("table_of_contents", documentTocDetails, "answered_questions", previouslyAskedQuestionsString);
+    }
+
+    private Map<String, Object> collectQuestionGenerationPromptParams(UUID interviewId, String contentToGenerateQuestion) {
+        List<String> previouslyAskedQuestions = this.interviewRepository.findQuestionTitlesByInterviewId(interviewId);
+        String previouslyAskedQuestionsString = this.createTextForAnsweredQuestions(previouslyAskedQuestions);
+        Interview interview = this.fetchInterviewOrThrow(interviewId);
+        log.info("Creating prompt for question generation");
+        return Map.of("answered_questions", previouslyAskedQuestionsString, "content", contentToGenerateQuestion,  "difficulty", interview.getDifficulty());
     }
 
     private String createTextForAnsweredQuestions(List<String> answeredQuestions) {

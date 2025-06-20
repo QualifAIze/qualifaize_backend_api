@@ -1,4 +1,4 @@
-package org.qualifaizebackendapi.DTO.response;
+package org.qualifaizebackendapi.DTO.response.interview.question;
 
 import lombok.Getter;
 import lombok.Setter;

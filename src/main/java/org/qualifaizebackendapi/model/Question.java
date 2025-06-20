@@ -14,6 +14,7 @@ import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 import org.qualifaizebackendapi.model.enums.Difficulty;
 
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 @Entity
@@ -71,6 +72,13 @@ public class Question {
     @Column(name = "question_order", nullable = false)
     private Integer questionOrder = 1;
 
+    @Pattern(regexp = "[ABCD]?", message = "Submitted answer must be A, B, C, D, or null")
+    @Column(name = "submitted_answer", length = 1)
+    private String submittedAnswer;
+
+    @Column(name = "answered_at")
+    private OffsetDateTime answeredAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
@@ -79,40 +87,60 @@ public class Question {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
-    public String getCorrectAnswerText() {
-        return switch (correctOption.toUpperCase()) {
-            case "A" -> optionA;
-            case "B" -> optionB;
-            case "C" -> optionC;
-            case "D" -> optionD;
-            default -> throw new IllegalStateException("Invalid correct option: " + correctOption);
-        };
+    /**
+     * Submits an answer for this question and records the submission time.
+     *
+     * @param answer The submitted answer (A, B, C, or D)
+     * @throws IllegalArgumentException if the answer is not valid
+     */
+    public void submitAnswer(String answer) {
+        if (answer == null || !answer.matches("[ABCD]")) {
+            throw new IllegalArgumentException("Answer must be A, B, C, or D");
+        }
+        this.submittedAnswer = answer.toUpperCase();
+        this.answeredAt = OffsetDateTime.now();
     }
 
-    public boolean isCorrectAnswer(String answer) {
-        return correctOption.equalsIgnoreCase(answer);
+    /**
+     * Submits an answer using a character parameter.
+     *
+     * @param answer The submitted answer as a char (A, B, C, or D)
+     */
+    public void submitAnswer(char answer) {
+        submitAnswer(String.valueOf(answer));
     }
 
-    public String[] getAllOptions() {
-        return new String[]{optionA, optionB, optionC, optionD};
+    /**
+     * Checks if this question has been answered.
+     *
+     * @return true if the question has been answered, false otherwise
+     */
+    public boolean isAnswered() {
+        return submittedAnswer != null && answeredAt != null;
     }
 
-    public String getOptionText(String option) {
-        return switch (option.toUpperCase()) {
-            case "A" -> optionA;
-            case "B" -> optionB;
-            case "C" -> optionC;
-            case "D" -> optionD;
-            default -> throw new IllegalArgumentException("Invalid option: " + option);
-        };
+    /**
+     * Checks if the submitted answer is correct.
+     *
+     * @return true if answered and correct, false if answered and incorrect
+     * @throws IllegalStateException if the question hasn't been answered yet
+     */
+    public boolean isSubmittedAnswerCorrect() {
+        if (!isAnswered()) {
+            throw new IllegalStateException("Question has not been answered yet");
+        }
+        return this.correctOption.equalsIgnoreCase(submittedAnswer);
     }
 
-    public boolean isValidCorrectOption() {
-        return correctOption != null && correctOption.matches("[ABCD]");
-    }
-
-    public String getFormattedOptions() {
-        return String.format("A) %s\nB) %s\nC) %s\nD) %s",
-                optionA, optionB, optionC, optionD);
+    /**
+     * Gets how long it took to answer the question (if answered).
+     *
+     * @return Duration in milliseconds between creation and answer, or null if not answered
+     */
+    public Long getAnswerTimeInMillis() {
+        if (!isAnswered()) {
+            return null;
+        }
+        return java.time.Duration.between(createdAt, answeredAt).get(ChronoUnit.MILLIS);
     }
 }

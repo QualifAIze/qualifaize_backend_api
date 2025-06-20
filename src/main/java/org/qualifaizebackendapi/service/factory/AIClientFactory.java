@@ -31,14 +31,25 @@ public class AIClientFactory {
     @Value("classpath:prompts/content_selection/sectionSelectionSystemPrompt.st")
     private Resource contentSelectionSysPrompt;
 
+    @Value("classpath:prompts/question_generation/generateQuestionSystemPrompt.st")
+    private Resource generateQuestionSystemPrompt;
+
     private final Map<String, ChatClient> clientCache = new ConcurrentHashMap<>();
 
-    public ChatClient generateContentSelectionClient(OpenAiApi.ChatModel chatModel) {
+    public ChatClient createContentSelectionClient(OpenAiApi.ChatModel chatModel) {
         return this.createClient(chatModel, contentSelectionSysPrompt);
     }
 
-    public ChatClient generateContentSelectionClient(MistralAiApi.ChatModel chatModel) {
+    public ChatClient createContentSelectionClient(MistralAiApi.ChatModel chatModel) {
         return this.createClient(chatModel, contentSelectionSysPrompt);
+    }
+
+    public ChatClient createQuestionGenerationClient(OpenAiApi.ChatModel chatModel) {
+        return this.createClient(chatModel, generateQuestionSystemPrompt);
+    }
+
+    public ChatClient createQuestionGenerationClient(MistralAiApi.ChatModel chatModel) {
+        return this.createClient(chatModel, generateQuestionSystemPrompt);
     }
 
     private ChatClient createClient(OpenAiApi.ChatModel model, Resource promptName) {
