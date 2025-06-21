@@ -4,14 +4,14 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.qualifaizebackendapi.DTO.request.UserLoginRequest;
 import org.qualifaizebackendapi.DTO.request.UserRegisterRequest;
-import org.qualifaizebackendapi.DTO.response.UserRegisterResponse;
-import org.qualifaizebackendapi.DTO.response.UserLoginResponse;
+import org.qualifaizebackendapi.DTO.response.UserAuthResponse;
 import org.qualifaizebackendapi.exception.ResourceNotFoundException;
 import org.qualifaizebackendapi.mapper.UserMapper;
 import org.qualifaizebackendapi.model.enums.Role;
 import org.qualifaizebackendapi.model.User;
 import org.qualifaizebackendapi.repository.UserRepository;
 import org.qualifaizebackendapi.security.JwtService;
+import org.qualifaizebackendapi.security.QualifAIzeUserDetails;
 import org.qualifaizebackendapi.service.UserService;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -37,27 +37,32 @@ public class UserServiceImpl implements UserService {
     private final JwtService jwtService;
     private final UserMapper userMapper;
 
-    public UserRegisterResponse register(UserRegisterRequest userRegisterRequestDTO) {
-        User user = new User();
-        user.setUsername(userRegisterRequestDTO.getUsername());
+    public UserAuthResponse register(UserRegisterRequest userRegisterRequestDTO) {
+        User user = this.userMapper.toUser(userRegisterRequestDTO);
         user.setPassword(bCryptPasswordEncoder.encode(userRegisterRequestDTO.getPassword()));
         user.setRoles(parseRoles(userRegisterRequestDTO.getRoles()));
         User savedUser = userRepository.save(user);
-        String token = jwtService.generateToken(savedUser.getUsername());
-        return userMapper.userToRegisteredUserResponse(savedUser, token);
+
+        String token = jwtService.generateToken(savedUser.getUsername(), user.getRoles());
+
+        return userMapper.toUserAuthResponse(token);
     }
 
     @Override
     @Transactional
     public void deleteUser(UUID userId) {
-        int a = userRepository.softDeleteById(this.fetchUserOrThrow(userId).getId());
-        System.out.println(a);
+        int affectedRowCFromDbRequest = userRepository.softDeleteById(this.fetchUserOrThrow(userId).getId());
+
+        if (affectedRowCFromDbRequest == 0) {
+            throw new IllegalArgumentException("User already deleted");
+        }
     }
 
-    public UserLoginResponse login(UserLoginRequest user) {
+    public UserAuthResponse login(UserLoginRequest user) {
         final String INCORRECT_CREDENTIALS_MESSAGE = "Username or password is incorrect";
+        Authentication authentication;
         try {
-            Authentication authentication = authenticationManager.authenticate(
+             authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword()));
 
             if (!authentication.isAuthenticated()) throw new UsernameNotFoundException(INCORRECT_CREDENTIALS_MESSAGE);
@@ -68,7 +73,8 @@ public class UserServiceImpl implements UserService {
             throw new UsernameNotFoundException("Authentication failed: " + e.getMessage());
         }
 
-        return new UserLoginResponse(jwtService.generateToken(user.getUsername()));
+        QualifAIzeUserDetails userDetails = (QualifAIzeUserDetails) authentication.getPrincipal();
+        return new UserAuthResponse(jwtService.generateToken(userDetails.getUser().getUsername(), userDetails.getUser().getRoles()));
     }
 
     private static Set<Role> parseRoles(String[] roles) {

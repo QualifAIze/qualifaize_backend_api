@@ -9,10 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.qualifaizebackendapi.DTO.request.UserLoginRequest;
 import org.qualifaizebackendapi.DTO.request.UserRegisterRequest;
 import org.qualifaizebackendapi.DTO.response.AccessDeniedResponse;
-import org.qualifaizebackendapi.DTO.response.UserRegisterResponse;
-import org.qualifaizebackendapi.DTO.response.UserLoginResponse;
+import org.qualifaizebackendapi.DTO.response.UserAuthResponse;
 import org.qualifaizebackendapi.service.UserService;
-import org.qualifaizebackendapi.service.impl.UserServiceImpl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,12 +31,12 @@ public class UserController {
                     @ApiResponse(
                             responseCode = "200",
                             description = "Successfully retrieved path information",
-                            content = @Content(schema = @Schema(implementation = UserRegisterResponse.class))
+                            content = @Content(schema = @Schema(implementation = UserAuthResponse.class))
                     )
             }
     )
     @PostMapping("/auth/register")
-    public ResponseEntity<UserRegisterResponse> register(@RequestBody UserRegisterRequest userRegisterRequestDTO){
+    public ResponseEntity<UserAuthResponse> register(@RequestBody UserRegisterRequest userRegisterRequestDTO){
         return ResponseEntity.ok(userService.register(userRegisterRequestDTO));
     }
 
@@ -49,7 +47,7 @@ public class UserController {
                     @ApiResponse(
                             responseCode = "200",
                             description = "Successfully retrieved path information",
-                            content = @Content(schema = @Schema(implementation = UserLoginResponse.class))
+                            content = @Content(schema = @Schema(implementation = UserAuthResponse.class))
                     ),
                     @ApiResponse(
                             responseCode = "401",
@@ -59,7 +57,7 @@ public class UserController {
             }
     )
     @PostMapping("/auth/login")
-    public ResponseEntity<UserLoginResponse> login(@RequestBody UserLoginRequest userLoginRequest){
+    public ResponseEntity<UserAuthResponse> login(@RequestBody UserLoginRequest userLoginRequest){
         return ResponseEntity.ok(userService.login(userLoginRequest));
     }
 
