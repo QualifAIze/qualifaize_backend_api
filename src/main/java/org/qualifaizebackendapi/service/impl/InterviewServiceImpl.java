@@ -3,6 +3,7 @@ package org.qualifaizebackendapi.service.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.qualifaizebackendapi.DTO.request.interview.CreateInterviewRequest;
+import org.qualifaizebackendapi.DTO.response.interview.AssignedInterviewResponse;
 import org.qualifaizebackendapi.DTO.response.interview.question.GenerateQuestionDTO;
 import org.qualifaizebackendapi.DTO.response.interview.question.QuestionSectionResponse;
 import org.qualifaizebackendapi.DTO.response.interview.ChangeInterviewStatusResponse;
@@ -33,6 +34,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -66,6 +68,28 @@ public class InterviewServiceImpl implements InterviewService {
 
         Interview interviewToSave = interviewMapper.toInterviewFromCreateInterviewRequest(request, documentToCreateTheInterview, assignedToUser, createdByUser);
         return new CreateInterviewResponse(interviewRepository.save(interviewToSave).getId());
+    }
+
+    @Override
+    public List<AssignedInterviewResponse> getAssignedInterviews(InterviewStatus status) {
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        log.info("Fetching assigned interviews for user: {} with status filter: {}", currentUserId, status);
+
+        List<Interview> assignedInterviews;
+        if (status != null) {
+            assignedInterviews = interviewRepository.findInterviewsAssignedToUserByStatus(currentUserId, status);
+            log.debug("Found {} interviews assigned to user {} with status {}",
+                    assignedInterviews.size(), currentUserId, status);
+        } else {
+            assignedInterviews = interviewRepository.findInterviewsAssignedToUser(currentUserId);
+            log.debug("Found {} total interviews assigned to user {}",
+                    assignedInterviews.size(), currentUserId);
+        }
+
+        List<AssignedInterviewResponse> assignedInterviewResponseList = this.interviewMapper.toAssignedInterviewResponses(assignedInterviews);
+        log.info("Returning {} assigned interviews for user {}", assignedInterviewResponseList.size(), currentUserId);
+
+        return assignedInterviewResponseList;
     }
 
     @Override

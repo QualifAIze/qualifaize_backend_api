@@ -1,6 +1,7 @@
 package org.qualifaizebackendapi.service;
 
 import org.qualifaizebackendapi.DTO.request.interview.CreateInterviewRequest;
+import org.qualifaizebackendapi.DTO.response.interview.AssignedInterviewResponse;
 import org.qualifaizebackendapi.DTO.response.interview.ChangeInterviewStatusResponse;
 import org.qualifaizebackendapi.DTO.response.interview.CreateInterviewResponse;
 import org.qualifaizebackendapi.DTO.response.interview.question.QuestionToAsk;
@@ -9,6 +10,7 @@ import org.qualifaizebackendapi.exception.ResourceNotFoundException;
 import org.qualifaizebackendapi.exception.DuplicateInterviewException;
 import org.qualifaizebackendapi.model.enums.InterviewStatus;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -27,6 +29,14 @@ public interface InterviewService {
      * @throws DuplicateInterviewException if an interview with the same name already exists for the document
      */
     CreateInterviewResponse createInterview(CreateInterviewRequest request);
+
+    /**
+     * Retrieves all interviews assigned to the current authenticated user.
+     *
+     * @param status Optional status filter - if provided, only interviews with this status will be returned
+     * @return List of interviews assigned to the current user
+     */
+    List<AssignedInterviewResponse> getAssignedInterviews(InterviewStatus status);
 
     /**
      * Updates the status of an existing interview.

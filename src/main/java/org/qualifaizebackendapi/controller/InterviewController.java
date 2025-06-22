@@ -2,6 +2,7 @@ package org.qualifaizebackendapi.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -11,6 +12,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.qualifaizebackendapi.DTO.request.interview.CreateInterviewRequest;
+import org.qualifaizebackendapi.DTO.response.interview.AssignedInterviewResponse;
 import org.qualifaizebackendapi.DTO.response.interview.ChangeInterviewStatusResponse;
 import org.qualifaizebackendapi.DTO.response.interview.CreateInterviewResponse;
 import org.qualifaizebackendapi.DTO.response.interview.question.QuestionToAsk;
@@ -18,10 +20,12 @@ import org.qualifaizebackendapi.DTO.response.interview.question.SubmitAnswerResp
 import org.qualifaizebackendapi.exception.ErrorResponse;
 import org.qualifaizebackendapi.model.enums.InterviewStatus;
 import org.qualifaizebackendapi.service.InterviewService;
+import org.qualifaizebackendapi.utils.SecurityUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @Tag(name = "Interview Operations", description = "Endpoint for interview process")
@@ -162,6 +166,41 @@ public class InterviewController {
         log.info("Retrieved next question for interview {}: {}", interviewId, nextQuestion.getTitle());
 
         return ResponseEntity.ok(nextQuestion);
+    }
+
+    @Operation(
+            summary = "Get assigned interviews",
+            description = "Retrieves all interviews assigned to the current authenticated user. Optionally filter by interview status."
+    )
+    @GetMapping("/assigned")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Assigned interviews retrieved successfully",
+                    content = @Content(
+                            array = @ArraySchema(schema = @Schema(implementation = AssignedInterviewResponse.class))
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "User not authenticated",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Insufficient permissions",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    public ResponseEntity<List<AssignedInterviewResponse>> getAssignedInterviews(
+            @Parameter(
+                    description = "Optional status filter to retrieve only interviews with specific status",
+                    example = "SCHEDULED"
+            )
+            @RequestParam(required = false) InterviewStatus status
+    ) {
+        List<AssignedInterviewResponse> assignedInterviews = interviewService.getAssignedInterviews(status);
+        return ResponseEntity.ok(assignedInterviews);
     }
 
     @Operation(
