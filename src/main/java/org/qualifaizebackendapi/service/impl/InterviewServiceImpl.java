@@ -66,7 +66,7 @@ public class InterviewServiceImpl implements InterviewService {
         User assignedToUser = userService.fetchUserOrThrow(request.getAssignedToUserId());
         User createdByUser = SecurityUtils.getCurrentUser();
 
-        Interview interviewToSave = interviewMapper.toInterviewFromCreateInterviewRequest(request, documentToCreateTheInterview, assignedToUser, createdByUser);
+        Interview interviewToSave = interviewMapper.toInterviewFromCreateInterviewRequest(request, documentToCreateTheInterview, createdByUser, assignedToUser);
         return new CreateInterviewResponse(interviewRepository.save(interviewToSave).getId());
     }
 

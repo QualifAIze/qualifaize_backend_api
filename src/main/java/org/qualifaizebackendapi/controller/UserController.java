@@ -1,6 +1,7 @@
 package org.qualifaizebackendapi.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -10,10 +11,13 @@ import org.qualifaizebackendapi.DTO.request.UserLoginRequest;
 import org.qualifaizebackendapi.DTO.request.UserRegisterRequest;
 import org.qualifaizebackendapi.DTO.response.AccessDeniedResponse;
 import org.qualifaizebackendapi.DTO.response.UserAuthResponse;
+import org.qualifaizebackendapi.DTO.response.user.UserDetailsOverviewResponse;
+import org.qualifaizebackendapi.exception.ErrorResponse;
 import org.qualifaizebackendapi.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @Tag(name = "User Operations", description = "Operations related to user registration and login")
@@ -59,6 +63,35 @@ public class UserController {
     @PostMapping("/auth/login")
     public ResponseEntity<UserAuthResponse> login(@RequestBody UserLoginRequest userLoginRequest){
         return ResponseEntity.ok(userService.login(userLoginRequest));
+    }
+
+    @Operation(
+            summary = "Get all users",
+            description = "Retrieves a list of all active users in the system with basic information including userId, username, firstName, and lastName.",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Users retrieved successfully",
+                            content = @Content(
+                                    array = @ArraySchema(schema = @Schema(implementation = UserDetailsOverviewResponse.class))
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Insufficient permissions to access user list",
+                            content = @Content(schema = @Schema(implementation = AccessDeniedResponse.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "Internal server error",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+                    )
+            }
+    )
+    @GetMapping
+    public ResponseEntity<List<UserDetailsOverviewResponse>> getAllUsers() {
+        List<UserDetailsOverviewResponse> users = userService.getAllUsers();
+        return ResponseEntity.ok(users);
     }
 
     @Operation(

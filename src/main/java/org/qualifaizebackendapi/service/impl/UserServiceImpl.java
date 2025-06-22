@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.qualifaizebackendapi.DTO.request.UserLoginRequest;
 import org.qualifaizebackendapi.DTO.request.UserRegisterRequest;
 import org.qualifaizebackendapi.DTO.response.UserAuthResponse;
+import org.qualifaizebackendapi.DTO.response.user.UserDetailsOverviewResponse;
 import org.qualifaizebackendapi.exception.ResourceNotFoundException;
 import org.qualifaizebackendapi.mapper.UserMapper;
 import org.qualifaizebackendapi.model.enums.Role;
@@ -23,6 +24,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -56,6 +58,11 @@ public class UserServiceImpl implements UserService {
         if (affectedRowCFromDbRequest == 0) {
             throw new IllegalArgumentException("User already deleted");
         }
+    }
+
+    @Override
+    public List<UserDetailsOverviewResponse> getAllUsers() {
+        return this.userMapper.toUserDetailsOverviewResponseList(userRepository.findAll());
     }
 
     public UserAuthResponse login(UserLoginRequest user) {
