@@ -2,10 +2,15 @@ package org.qualifaizebackendapi.service.impl;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.qualifaizebackendapi.DTO.request.UserLoginRequest;
-import org.qualifaizebackendapi.DTO.request.UserRegisterRequest;
+import lombok.extern.slf4j.Slf4j;
+import org.flywaydb.core.internal.util.StringUtils;
+import org.qualifaizebackendapi.DTO.request.user.UpdateUserDetailsRequest;
+import org.qualifaizebackendapi.DTO.request.user.UserLoginRequest;
+import org.qualifaizebackendapi.DTO.request.user.UserRegisterRequest;
 import org.qualifaizebackendapi.DTO.response.UserAuthResponse;
 import org.qualifaizebackendapi.DTO.response.user.UserDetailsOverviewResponse;
+import org.qualifaizebackendapi.DTO.response.user.UserDetailsResponse;
+import org.qualifaizebackendapi.exception.DuplicateException;
 import org.qualifaizebackendapi.exception.ResourceNotFoundException;
 import org.qualifaizebackendapi.mapper.UserMapper;
 import org.qualifaizebackendapi.model.enums.Role;
@@ -14,6 +19,7 @@ import org.qualifaizebackendapi.repository.UserRepository;
 import org.qualifaizebackendapi.security.JwtService;
 import org.qualifaizebackendapi.security.QualifAIzeUserDetails;
 import org.qualifaizebackendapi.service.UserService;
+import org.qualifaizebackendapi.utils.SecurityUtils;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -31,6 +37,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
@@ -62,7 +69,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserDetailsOverviewResponse> getAllUsers() {
-        return this.userMapper.toUserDetailsOverviewResponseList(userRepository.findAll());
+        return this.userMapper.toUserDetailsOverviewResponseList(userRepository.findAllActive());
     }
 
     public UserAuthResponse login(UserLoginRequest user) {
@@ -83,6 +90,52 @@ public class UserServiceImpl implements UserService {
         QualifAIzeUserDetails userDetails = (QualifAIzeUserDetails) authentication.getPrincipal();
         return new UserAuthResponse(jwtService.generateToken(userDetails.getUser().getUsername(), userDetails.getUser().getRoles()));
     }
+
+    @Override
+    @Transactional
+    public UserDetailsResponse updateUserDetails(UUID userId, UpdateUserDetailsRequest request) {
+        log.info("Updating user details for user ID: {}", userId);
+
+        User existingUser = fetchUserOrThrow(userId);
+
+        if (StringUtils.hasText(request.getUsername()) &&
+                !request.getUsername().equals(existingUser.getUsername())) {
+
+            if (userRepository.existsByUsernameAndIdNot(request.getUsername(), userId)) {
+                throw new DuplicateException(
+                        String.format("Username '%s' is already taken", request.getUsername())
+                );
+            }
+        }
+
+        if (StringUtils.hasText(request.getEmail()) &&
+                !request.getEmail().equals(existingUser.getEmail())) {
+
+            if (userRepository.existsByEmailAndIdNot(request.getEmail(), userId)) {
+                throw new DuplicateException(
+                        String.format("Email '%s' is already in use", request.getEmail())
+                );
+            }
+        }
+
+        userMapper.updateUserFromRequest(request, existingUser);
+
+        User updatedUser = userRepository.save(existingUser);
+
+        log.info("Successfully updated user details for user ID: {}", userId);
+
+        return userMapper.toUserDetailsResponse(updatedUser);
+    }
+
+    @Override
+    public UserDetailsResponse getCurrentUserDetails() {
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        log.info("Fetching current user details for user ID: {}", currentUserId);
+
+        User currentUser = fetchUserOrThrow(currentUserId);
+        return userMapper.toUserDetailsResponse(currentUser);
+    }
+
 
     private static Set<Role> parseRoles(String[] roles) {
         if (roles == null) {

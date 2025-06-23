@@ -31,8 +31,8 @@ public class GlobalExceptionHandler {
 //        return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
 //    }
 
-    @ExceptionHandler(DuplicateDocumentException.class)
-    public ResponseEntity<ErrorResponse> handleDuplicateDocument(DuplicateDocumentException ex) {
+    @ExceptionHandler(DuplicateException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateDocument(DuplicateException ex) {
         ErrorResponse errorResponse = new ErrorResponse(HttpStatus.CONFLICT.getReasonPhrase(), ex.getMessage());
         return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
     }

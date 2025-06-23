@@ -10,7 +10,7 @@ import org.qualifaizebackendapi.DTO.response.pdf.UploadedPdfResponse;
 import org.qualifaizebackendapi.DTO.response.pdf.UploadedPdfResponseWithConcatenatedContent;
 import org.qualifaizebackendapi.DTO.response.pdf.table_of_contents_response.SubsectionDetailsDTO;
 import org.qualifaizebackendapi.DTO.response.pdf.table_of_contents_response.UploadedPdfResponseWithToc;
-import org.qualifaizebackendapi.exception.DuplicateDocumentException;
+import org.qualifaizebackendapi.exception.DuplicateException;
 import org.qualifaizebackendapi.exception.ResourceNotFoundException;
 import org.qualifaizebackendapi.mapper.PdfMapper;
 import org.qualifaizebackendapi.mapper.SubsectionMapper;
@@ -123,7 +123,7 @@ public class PdfServiceImpl implements PdfService {
         if (pdfRepository.existsBySecondaryFileName(secondaryFileName)) {
             String message = "Document with name '" + secondaryFileName + "' already exists";
             log.warn("Duplicate secondary filename detected: {}", secondaryFileName);
-            throw new DuplicateDocumentException(message);
+            throw new DuplicateException(message);
         }
     }
 
@@ -353,7 +353,7 @@ public class PdfServiceImpl implements PdfService {
         String baseErrorMessage = "Failed to process PDF document";
 
         return switch (error) {
-            case DuplicateDocumentException e -> e;
+            case DuplicateException e -> e;
             case IllegalArgumentException e -> new IllegalArgumentException(e.getMessage(), e);
             case RestClientResponseException e -> new RuntimeException(
                     String.format("%s - Service error [%d]: %s",

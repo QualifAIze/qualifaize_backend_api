@@ -1,4 +1,4 @@
-package org.qualifaizebackendapi.DTO.request;
+package org.qualifaizebackendapi.DTO.request.user;
 
 import lombok.Getter;
 import lombok.Setter;

@@ -15,5 +15,4 @@ public class UserDetailsResponse extends UserDetailsOverviewResponse{
     private String email;
     private OffsetDateTime memberSince;
     private OffsetDateTime birthDate;
-    private boolean isDeleted;
 }
