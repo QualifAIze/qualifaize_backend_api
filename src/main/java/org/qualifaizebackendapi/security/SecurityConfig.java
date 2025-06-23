@@ -5,6 +5,7 @@ import org.qualifaizebackendapi.exception.CustomAccessDeniedHandler;
 import org.qualifaizebackendapi.exception.CustomAuthenticationEntryPoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -34,10 +35,40 @@ public class SecurityConfig {
                 .sessionManagement(sessionManagement -> sessionManagement
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
-                        .requestMatchers("/api/v1/user/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/", "/error").permitAll()
-                        .requestMatchers("/user").hasAnyRole("ADMIN", "USER")
-                        .requestMatchers("/admin", "/api/v1/pdf/**", "/api/v1/user/**").hasRole("ADMIN")
-                        .anyRequest().authenticated())
+                        // ===============================================
+                        // PUBLIC ENDPOINTS (No Authentication Required)
+                        // ===============================================
+                        .requestMatchers(
+                                "/api/v1/user/auth/**",           // Registration & Login
+                                "/v3/api-docs/**",                // OpenAPI docs
+                                "/swagger-ui/**",                 // Swagger UI
+                                "/swagger-ui.html",               // Swagger UI HTML
+                                "/",                              // Root path
+                                "/error"                          // Error handling
+                        ).permitAll()
+                        // ===============================================
+                        // USER MANAGEMENT ENDPOINTS
+                        // ===============================================
+                        .requestMatchers(HttpMethod.GET, "/api/v1/user/me").hasAnyRole("GUEST", "USER", "ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/user/**").hasAnyRole("GUEST", "USER", "ADMIN")
+                        // Only admins can view all users and delete users
+                        .requestMatchers(HttpMethod.GET, "/api/v1/user").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/user/**").hasRole("ADMIN")
+                        // ===============================================
+                        // DOCUMENT/PDF MANAGEMENT ENDPOINTS
+                        // ===============================================
+                        // All PDF endpoints require admin role
+                        .requestMatchers("/api/v1/pdf/**").hasRole("ADMIN")
+                        // ===============================================
+                        // INTERVIEW MANAGEMENT ENDPOINTS
+                        // ===============================================
+                        .requestMatchers(HttpMethod.POST, "/api/v1/interview").hasAnyRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/interview/assigned").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/interview/next/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/interview/answer/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/interview/*").hasAnyRole("USER", "ADMIN")
+                        .anyRequest()
+                        .authenticated())
                 .exceptionHandling(exception -> exception
                         .accessDeniedHandler(accessDeniedHandler)
                         .authenticationEntryPoint(authenticationEntryPoint))

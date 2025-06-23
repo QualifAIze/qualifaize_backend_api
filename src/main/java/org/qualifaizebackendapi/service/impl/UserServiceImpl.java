@@ -96,6 +96,8 @@ public class UserServiceImpl implements UserService {
     public UserDetailsResponse updateUserDetails(UUID userId, UpdateUserDetailsRequest request) {
         log.info("Updating user details for user ID: {}", userId);
 
+        SecurityUtils.checkUserAccess(userId);
+
         User existingUser = fetchUserOrThrow(userId);
 
         if (StringUtils.hasText(request.getUsername()) &&
@@ -119,7 +121,7 @@ public class UserServiceImpl implements UserService {
         }
 
         userMapper.updateUserFromRequest(request, existingUser);
-
+        
         User updatedUser = userRepository.save(existingUser);
 
         log.info("Successfully updated user details for user ID: {}", userId);
