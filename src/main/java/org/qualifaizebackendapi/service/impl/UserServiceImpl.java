@@ -52,7 +52,7 @@ public class UserServiceImpl implements UserService {
         user.setRoles(parseRoles(userRegisterRequestDTO.getRoles()));
         User savedUser = userRepository.save(user);
 
-        String token = jwtService.generateToken(savedUser.getUsername(), user.getRoles());
+        String token = jwtService.generateToken(savedUser.getId(), savedUser.getUsername(), user.getRoles());
 
         return userMapper.toUserAuthResponse(token);
     }
@@ -88,7 +88,7 @@ public class UserServiceImpl implements UserService {
         }
 
         QualifAIzeUserDetails userDetails = (QualifAIzeUserDetails) authentication.getPrincipal();
-        return new UserAuthResponse(jwtService.generateToken(userDetails.getUser().getUsername(), userDetails.getUser().getRoles()));
+        return new UserAuthResponse(jwtService.generateToken(userDetails.getUser().getId(), userDetails.getUser().getUsername(), userDetails.getUser().getRoles()));
     }
 
     @Override
@@ -121,7 +121,7 @@ public class UserServiceImpl implements UserService {
         }
 
         userMapper.updateUserFromRequest(request, existingUser);
-        
+
         User updatedUser = userRepository.save(existingUser);
 
         log.info("Successfully updated user details for user ID: {}", userId);

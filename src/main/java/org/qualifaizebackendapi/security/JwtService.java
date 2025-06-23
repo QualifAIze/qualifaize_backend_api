@@ -19,7 +19,7 @@ public class JwtService {
     @Value("${jwt.secret}")
     private String secretKey;
 
-    public String generateToken(String username, Set<Role> roles) {
+    public String generateToken(UUID userId, String username, Set<Role> roles) {
         Map<String, Object> claims = new HashMap<>();
 
         List<String> roleNames = roles.stream().map(Role::name).toList();
@@ -28,6 +28,7 @@ public class JwtService {
                 .claims()
                 .add(claims)
                 .subject(username)
+                .add("userId", userId)
                 .add("roles", roleNames)
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24)) //24h
