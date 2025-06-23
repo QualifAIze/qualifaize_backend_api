@@ -170,6 +170,44 @@ public class UserController {
     }
 
     @Operation(
+            summary = "Promote user role",
+            description = "Promotes a user by adding a new role. Only administrators can perform this operation. The user will retain existing roles in addition to the new one."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "User role promoted successfully",
+                    content = @Content(schema = @Schema(implementation = UserDetailsResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid user ID, role, or user already has the role",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "User not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Insufficient permissions - Admin role required",
+                    content = @Content(schema = @Schema(implementation = AccessDeniedResponse.class))
+            )
+    })
+    @GetMapping("/promote/{userId}")
+    public ResponseEntity<UserDetailsResponse> promoteUserRole(
+            @Parameter(description = "ID of the user to promote", required = true)
+            @PathVariable UUID userId,
+
+            @Parameter(description = "Role to add to the user (GUEST, USER, ADMIN)", required = true)
+            @RequestParam String role
+    ) {
+        UserDetailsResponse response = userService.promoteUserRole(userId, role);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(
             summary = "Delete user account",
             description = "Performs a soft delete on the specified user account, marking it as deleted while preserving the data in the system.",
             responses = {

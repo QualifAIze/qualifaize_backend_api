@@ -138,6 +138,67 @@ public class UserServiceImpl implements UserService {
         return userMapper.toUserDetailsResponse(currentUser);
     }
 
+    @Override
+    @Transactional
+    public UserDetailsResponse promoteUserRole(UUID userId, String roleString) {
+        log.info("Starting role promotion for user ID: {} with role: {}", userId, roleString);
+
+        SecurityUtils.requireAdmin("promote user roles");
+
+        Role roleToAdd = validateAndParseRole(roleString);
+
+        User userToPromote = fetchUserOrThrow(userId);
+
+        if (userToPromote.getRoles().contains(roleToAdd)) {
+            throw new IllegalArgumentException(
+                    String.format("User '%s' already has role '%s'",
+                            userToPromote.getUsername(), roleToAdd.name())
+            );
+        }
+
+        userToPromote.getRoles().add(roleToAdd);
+
+        User updatedUser = userRepository.save(userToPromote);
+
+        log.info("Successfully promoted user '{}' (ID: {}) with role: {}",
+                updatedUser.getUsername(), userId, roleToAdd.name());
+
+        return userMapper.toUserDetailsResponse(updatedUser);
+    }
+
+
+    public User fetchUserOrThrow(UUID userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        String.format("User with Id %s was now found!", userId)
+                ));
+    }
+
+    /**
+     * Validates and parses the role string into a Role enum.
+     *
+     * @param roleString The role string to validate
+     * @return The parsed Role enum
+     * @throws IllegalArgumentException if the role is invalid
+     */
+    private Role validateAndParseRole(String roleString) {
+        if (roleString == null || roleString.trim().isEmpty()) {
+            throw new IllegalArgumentException("Role cannot be null or empty");
+        }
+
+        try {
+            return Role.valueOf(roleString.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            String validRoles = Arrays.stream(Role.values())
+                    .map(Role::name)
+                    .collect(Collectors.joining(", "));
+
+            throw new IllegalArgumentException(
+                    String.format("Invalid role '%s'. Valid roles are: %s",
+                            roleString, validRoles)
+            );
+        }
+    }
 
     private static Set<Role> parseRoles(String[] roles) {
         if (roles == null) {
@@ -150,12 +211,5 @@ public class UserServiceImpl implements UserService {
                 .map(String::toUpperCase)
                 .map(Role::valueOf)
                 .collect(Collectors.toSet());
-    }
-
-    public User fetchUserOrThrow(UUID userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        String.format("User with Id %s was now found!", userId)
-                ));
     }
 }

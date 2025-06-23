@@ -51,7 +51,8 @@ public class SecurityConfig {
                         // ===============================================
                         .requestMatchers(HttpMethod.GET, "/api/v1/user/me").hasAnyRole("GUEST", "USER", "ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/user/**").hasAnyRole("GUEST", "USER", "ADMIN")
-                        // Only admins can view all users and delete users
+                        // Only admins can view all users, delete and promote them
+                        .requestMatchers(HttpMethod.GET, "/api/v1/user/promote/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/user").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/user/**").hasRole("ADMIN")
                         // ===============================================
