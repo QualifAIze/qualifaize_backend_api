@@ -135,7 +135,7 @@ public class Interview {
     }
 
     public void cancel() {
-        if (this.status == InterviewStatus.SCHEDULED) {
+        if (this.status == InterviewStatus.SCHEDULED || this.status == InterviewStatus.IN_PROGRESS) {
             this.status = InterviewStatus.CANCELLED;
         }
     }
