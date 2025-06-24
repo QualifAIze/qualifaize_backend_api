@@ -1,5 +1,6 @@
 package org.qualifaizebackendapi.service.impl;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.qualifaizebackendapi.DTO.db_object.DocumentWithUserRow;
@@ -108,11 +109,12 @@ public class PdfServiceImpl implements PdfService {
     }
 
     @Override
+    @Transactional
     public void deleteDocument(UUID documentId) {
         log.info("Deleting document with ID: {}", documentId);
 
         Document document = findDocumentByIdOrThrow(documentId);
-        pdfRepository.delete(document);
+        pdfRepository.softDeleteById(document.getId());
 
         log.info("Document deleted successfully: {}", documentId);
     }
@@ -319,7 +321,7 @@ public class PdfServiceImpl implements PdfService {
     // ==================== Utility Methods ====================
 
     public Document findDocumentByIdOrThrow(UUID documentId) {
-        return pdfRepository.findById(documentId)
+        return pdfRepository.findActiveById(documentId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         String.format("PDF document not found with ID: %s", documentId)
                 ));

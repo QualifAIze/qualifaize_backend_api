@@ -12,7 +12,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface PdfRepository extends JpaRepository<Document, UUID> {
+public interface PdfRepository extends SoftDeletableRepository<Document, UUID> {
     boolean existsBySecondaryFileName(String secondaryFileName);
 
     @Query("""
@@ -20,6 +20,7 @@ public interface PdfRepository extends JpaRepository<Document, UUID> {
                         u.lastName, d.id, d.fileName, d.secondaryFileName, d.createdAt)
             FROM Document d
             JOIN User u ON d.uploadedByUser.id = u.id
+            WHERE d.deleted = false
             """)
     List<DocumentWithUserRow> getAllDocumentWithUserDetails();
 
@@ -28,7 +29,7 @@ public interface PdfRepository extends JpaRepository<Document, UUID> {
                         u.lastName, d.id, d.fileName, d.secondaryFileName, d.createdAt)
             FROM Document d
             JOIN User u ON d.uploadedByUser.id = u.id
-            WHERE d.id = :documentId
+            WHERE d.id = :documentId AND d.deleted = false
             """)
     Optional<DocumentWithUserRow> getDocumentWithUserDetails(UUID documentId);
 

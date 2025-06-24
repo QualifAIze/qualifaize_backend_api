@@ -17,7 +17,7 @@ import java.util.UUID;
 @Setter
 @Entity
 @Table(name = "document")
-public class Document {
+public class Document extends SoftDeletable {
     @Id
     @GeneratedValue
     private UUID id;
