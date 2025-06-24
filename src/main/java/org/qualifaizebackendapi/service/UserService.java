@@ -17,7 +17,7 @@ public interface UserService {
     UserAuthResponse login(UserLoginRequest user);
     UserAuthResponse register(UserRegisterRequest user);
     void deleteUser(UUID userId);
-    List<UserDetailsOverviewResponse> getAllUsers();
+    List<UserDetailsResponse> getAllUsers();
     User fetchUserOrThrow(UUID userId);
     UserDetailsResponse updateUserDetails(UUID userId, UpdateUserDetailsRequest request);
     UserDetailsResponse getCurrentUserDetails();

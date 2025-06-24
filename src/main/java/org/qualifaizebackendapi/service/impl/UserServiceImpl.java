@@ -68,8 +68,8 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public List<UserDetailsOverviewResponse> getAllUsers() {
-        return this.userMapper.toUserDetailsOverviewResponseList(userRepository.findAllActive());
+    public List<UserDetailsResponse> getAllUsers() {
+        return this.userMapper.toUserDetailsResponseList(userRepository.findAllActive());
     }
 
     public UserAuthResponse login(UserLoginRequest user) {

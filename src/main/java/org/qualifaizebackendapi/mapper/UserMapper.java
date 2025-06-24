@@ -33,7 +33,11 @@ public interface UserMapper {
 
     @Mapping(target = "userId", source = "id")
     @Mapping(target = "memberSince", source = "createdAt")
+    @Named("toUserDetailsResponse")
     UserDetailsResponse toUserDetailsResponse(User user);
+
+    @IterableMapping(qualifiedByName = "toUserDetailsResponse")
+    List<UserDetailsResponse> toUserDetailsResponseList(List<User> users);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
