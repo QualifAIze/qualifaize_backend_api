@@ -9,6 +9,7 @@ import org.qualifaizebackendapi.DTO.response.interview.InterviewDetailsResponse;
 import org.qualifaizebackendapi.DTO.response.interview.question.GenerateQuestionDTO;
 import org.qualifaizebackendapi.DTO.response.interview.ChangeInterviewStatusResponse;
 import org.qualifaizebackendapi.DTO.response.interview.CreateInterviewResponse;
+import org.qualifaizebackendapi.DTO.response.interview.question.QuestionDetailsResponse;
 import org.qualifaizebackendapi.DTO.response.interview.question.QuestionToAsk;
 import org.qualifaizebackendapi.DTO.response.interview.question.SubmitAnswerResponse;
 import org.qualifaizebackendapi.exception.ResourceNotFoundException;
@@ -30,6 +31,7 @@ import org.qualifaizebackendapi.utils.InterviewProgressCalculator;
 import org.qualifaizebackendapi.utils.SecurityUtils;
 import org.springframework.stereotype.Service;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -97,7 +99,11 @@ public class InterviewServiceImpl implements InterviewService {
 
         log.info("Retrieved {} interview(s) with questions", interviews.size());
 
-        return interviewMapper.toInterviewDetailsResponses(interviews);
+        List<InterviewDetailsResponse> response = interviewMapper.toInterviewDetailsResponses(interviews);
+        response.forEach(interview -> interview.getQuestions()
+                        .sort(Comparator.comparing(QuestionDetailsResponse::getQuestionOrder)));
+
+        return response;
     }
 
     @Override
