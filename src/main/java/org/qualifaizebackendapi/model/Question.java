@@ -146,6 +146,6 @@ public class Question {
         if (!isAnswered()) {
             return null;
         }
-        return java.time.Duration.between(createdAt, answeredAt).get(ChronoUnit.MILLIS);
+        return java.time.Duration.between(createdAt, answeredAt).toMillis();
     }
 }

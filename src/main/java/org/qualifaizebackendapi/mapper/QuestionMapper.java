@@ -1,12 +1,17 @@
 package org.qualifaizebackendapi.mapper;
 
+import org.mapstruct.IterableMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.Named;
 import org.qualifaizebackendapi.DTO.response.interview.question.GenerateQuestionDTO;
+import org.qualifaizebackendapi.DTO.response.interview.question.QuestionDetailsResponse;
 import org.qualifaizebackendapi.DTO.response.interview.question.QuestionToAsk;
 import org.qualifaizebackendapi.DTO.response.interview.question.SubmitAnswerResponse;
 import org.qualifaizebackendapi.model.Interview;
 import org.qualifaizebackendapi.model.Question;
+
+import java.util.List;
 
 @Mapper(componentModel = "spring")
 public interface QuestionMapper {
@@ -23,4 +28,23 @@ public interface QuestionMapper {
     @Mapping(target = "questionId", source = "question.id")
     @Mapping(target = "correctAnswer", source = "question.correctOption")
     SubmitAnswerResponse toSubmitAnswerResponse(Question question, String submittedAnswer);
+
+    @Mapping(target = "isCorrect", expression = "java(getIsCorrect(question))")
+    @Mapping(target = "answerTimeInMillis", expression = "java(getAnswerTimeInMillis(question))")
+    @Named("toQuestionDetailsResponse")
+    QuestionDetailsResponse toQuestionDetailsResponse(Question question);
+
+    @IterableMapping(qualifiedByName = "toQuestionDetailsResponse")
+    @Named("toQuestionDetailsResponses")
+    List<QuestionDetailsResponse> toQuestionDetailsResponses(List<Question> questions);
+
+    // Helper methods for QuestionMapper
+    default Boolean getIsCorrect(Question question) {
+        if (!question.isAnswered()) return null;
+        return question.isSubmittedAnswerCorrect();
+    }
+
+    default Long getAnswerTimeInMillis(Question question) {
+        return question.getAnswerTimeInMillis();
+    }
 }

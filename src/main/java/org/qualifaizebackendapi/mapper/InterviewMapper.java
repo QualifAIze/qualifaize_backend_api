@@ -5,13 +5,14 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.qualifaizebackendapi.DTO.request.interview.CreateInterviewRequest;
 import org.qualifaizebackendapi.DTO.response.interview.AssignedInterviewResponse;
+import org.qualifaizebackendapi.DTO.response.interview.InterviewDetailsResponse;
 import org.qualifaizebackendapi.model.Document;
 import org.qualifaizebackendapi.model.Interview;
 import org.qualifaizebackendapi.model.User;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = {QuestionMapper.class, UserMapper.class})
 public interface InterviewMapper {
 
     @Mapping(target = "id", ignore = true)
@@ -33,5 +34,25 @@ public interface InterviewMapper {
         String lastName = user.getLastName() != null ? user.getLastName() : "";
 
         return (firstName + " " + lastName).trim();
+    }
+
+    @Mapping(target = "documentTitle", source = "interview.document.secondaryFileName")
+    @Mapping(target = "createdBy", source = "createdByUser", qualifiedByName = "toUserDetailsOverviewResponse")
+    @Mapping(target = "assignedTo", source = "assignedToUser", qualifiedByName = "toUserDetailsOverviewResponse")
+    @Mapping(target = "questions", source = "questions", qualifiedByName = "toQuestionDetailsResponses")
+    @Mapping(target = "totalQuestions", expression = "java(getTotalQuestions(interview))")
+    @Mapping(target = "durationInSeconds", expression = "java(getDurationInSeconds(interview))")
+    InterviewDetailsResponse toInterviewDetailsResponse(Interview interview);
+
+    @IterableMapping(elementTargetType = InterviewDetailsResponse.class)
+    List<InterviewDetailsResponse> toInterviewDetailsResponses(List<Interview> interviews);
+
+    default Integer getTotalQuestions(Interview interview) {
+        return interview.getQuestions() != null ? interview.getQuestions().size() : 0;
+    }
+
+    default Long getDurationInSeconds(Interview interview) {
+        Long durationMinutes = interview.getDurationInMinutes();
+        return durationMinutes != null ? durationMinutes * 60 : null;
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -26,23 +27,45 @@ public interface InterviewRepository extends JpaRepository<Interview, UUID> {
     List<String> findQuestionTitlesByInterviewId(UUID interviewId);
 
     @Query("""
-        SELECT i FROM Interview i
-        LEFT JOIN FETCH i.document d
-        LEFT JOIN FETCH i.createdByUser c
-        LEFT JOIN FETCH i.questions q
-        WHERE i.assignedToUser.id = :userId
-        ORDER BY i.createdAt DESC
-        """)
+            SELECT i FROM Interview i
+            LEFT JOIN FETCH i.document d
+            LEFT JOIN FETCH i.createdByUser c
+            LEFT JOIN FETCH i.questions q
+            WHERE i.assignedToUser.id = :userId
+            ORDER BY i.createdAt DESC
+            """)
     List<Interview> findInterviewsAssignedToUser(@Param("userId") UUID userId);
 
     @Query("""
-        SELECT i FROM Interview i
-        LEFT JOIN FETCH i.document d
-        LEFT JOIN FETCH i.createdByUser c
-        LEFT JOIN FETCH i.questions q
-        WHERE i.assignedToUser.id = :userId
-        AND i.status = :status
-        ORDER BY i.createdAt DESC
-        """)
+            SELECT i FROM Interview i
+            LEFT JOIN FETCH i.document d
+            LEFT JOIN FETCH i.createdByUser c
+            LEFT JOIN FETCH i.questions q
+            WHERE i.assignedToUser.id = :userId
+            AND i.status = :status
+            ORDER BY i.createdAt DESC
+            """)
     List<Interview> findInterviewsAssignedToUserByStatus(@Param("userId") UUID userId, @Param("status") InterviewStatus status);
+
+    @Query("""
+            SELECT DISTINCT i FROM Interview i
+            LEFT JOIN FETCH i.document d
+            LEFT JOIN FETCH i.createdByUser c
+            LEFT JOIN FETCH i.assignedToUser a
+            LEFT JOIN FETCH i.questions q
+            WHERE (:userId IS NULL OR i.assignedToUser.id = :userId)
+            ORDER BY i.createdAt DESC
+            """)
+    List<Interview> findInterviewsWithQuestions(@Param("userId") UUID userId);
+
+    @Query("""
+            SELECT DISTINCT i FROM Interview i
+            LEFT JOIN FETCH i.document d
+            LEFT JOIN FETCH i.createdByUser c
+            LEFT JOIN FETCH i.assignedToUser a
+            LEFT JOIN FETCH i.questions q
+            WHERE i.id = :interviewId
+            AND (:userId IS NULL OR i.assignedToUser.id = :userId)
+            """)
+    Optional<Interview> findInterviewWithQuestionsById(@Param("interviewId") UUID interviewId, @Param("userId") UUID userId);
 }

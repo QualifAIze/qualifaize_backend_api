@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.qualifaizebackendapi.DTO.request.interview.CreateInterviewRequest;
 import org.qualifaizebackendapi.DTO.response.interview.AssignedInterviewResponse;
+import org.qualifaizebackendapi.DTO.response.interview.InterviewDetailsResponse;
 import org.qualifaizebackendapi.DTO.response.interview.question.GenerateQuestionDTO;
 import org.qualifaizebackendapi.DTO.response.interview.question.QuestionSectionResponse;
 import org.qualifaizebackendapi.DTO.response.interview.ChangeInterviewStatusResponse;
@@ -20,6 +21,7 @@ import org.qualifaizebackendapi.model.Interview;
 import org.qualifaizebackendapi.model.Question;
 import org.qualifaizebackendapi.model.User;
 import org.qualifaizebackendapi.model.enums.InterviewStatus;
+import org.qualifaizebackendapi.model.enums.Role;
 import org.qualifaizebackendapi.repository.InterviewRepository;
 import org.qualifaizebackendapi.repository.QuestionRepository;
 import org.qualifaizebackendapi.service.InterviewService;
@@ -28,13 +30,11 @@ import org.qualifaizebackendapi.service.UserService;
 import org.qualifaizebackendapi.service.factory.AIClientFactory;
 import org.qualifaizebackendapi.utils.SecurityUtils;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.mistralai.api.MistralAiApi;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -91,6 +91,37 @@ public class InterviewServiceImpl implements InterviewService {
 
         return assignedInterviewResponseList;
     }
+
+    @Override
+    public List<InterviewDetailsResponse> getInterviewsWithQuestions(UUID interviewId) {
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        boolean isAdmin = SecurityUtils.hasRole(Role.ADMIN);
+
+        log.info("Fetching interviews with questions for user: {} (Admin: {}), interviewId: {}",
+                currentUserId, isAdmin, interviewId);
+
+        // Determine access level based on role
+        UUID filterUserId = isAdmin ? null : currentUserId;
+
+        List<Interview> interviews;
+
+        if (interviewId != null) {
+            Interview interview = interviewRepository.findInterviewWithQuestionsById(interviewId, filterUserId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            String.format("Interview with ID %s not found or access denied", interviewId)
+                    ));
+            interviews = List.of(interview);
+
+            log.info("Successfully retrieved specific interview: {} for user: {}", interviewId, currentUserId);
+        } else {
+            interviews = interviewRepository.findInterviewsWithQuestions(filterUserId);
+
+            log.info("Found {} interviews for user: {} (Admin: {})", interviews.size(), currentUserId, isAdmin);
+        }
+
+        return interviewMapper.toInterviewDetailsResponses(interviews);
+    }
+
 
     @Override
     public ChangeInterviewStatusResponse updateInterviewStatus(UUID interviewId, InterviewStatus newStatus) {

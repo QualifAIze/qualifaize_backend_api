@@ -15,12 +15,12 @@ import org.qualifaizebackendapi.DTO.request.interview.CreateInterviewRequest;
 import org.qualifaizebackendapi.DTO.response.interview.AssignedInterviewResponse;
 import org.qualifaizebackendapi.DTO.response.interview.ChangeInterviewStatusResponse;
 import org.qualifaizebackendapi.DTO.response.interview.CreateInterviewResponse;
+import org.qualifaizebackendapi.DTO.response.interview.InterviewDetailsResponse;
 import org.qualifaizebackendapi.DTO.response.interview.question.QuestionToAsk;
 import org.qualifaizebackendapi.DTO.response.interview.question.SubmitAnswerResponse;
 import org.qualifaizebackendapi.exception.ErrorResponse;
 import org.qualifaizebackendapi.model.enums.InterviewStatus;
 import org.qualifaizebackendapi.service.InterviewService;
-import org.qualifaizebackendapi.utils.SecurityUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -128,6 +128,62 @@ public class InterviewController {
 
         return ResponseEntity.ok(response);
     }
+
+    @Operation(
+            summary = "Get interviews with questions",
+            description = "Retrieves interviews with their complete question details. " +
+                    "If interviewId is provided, returns specific interview. " +
+                    "Admins see all interviews, regular users see only interviews assigned to them."
+    )
+    @GetMapping("/with-questions")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Interviews retrieved successfully",
+                    content = @Content(
+                            array = @ArraySchema(schema = @Schema(implementation = InterviewDetailsResponse.class))
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid interview ID",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Interview not found or access denied",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "User not authenticated",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Insufficient permissions",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    public ResponseEntity<List<InterviewDetailsResponse>> getInterviewsWithQuestions(
+            @Parameter(
+                    description = "Optional interview ID. If provided, returns specific interview. If omitted, returns all accessible interviews."
+            )
+            @RequestParam(required = false) UUID interviewId
+    ) {
+        if (interviewId != null) {
+            log.info("Request to get specific interview {} with questions", interviewId);
+        } else {
+            log.info("Request to get all accessible interviews with questions");
+        }
+
+        List<InterviewDetailsResponse> interviews = interviewService.getInterviewsWithQuestions(interviewId);
+
+        log.info("Returning {} interview(s) with questions", interviews.size());
+
+        return ResponseEntity.ok(interviews);
+    }
+
     @Operation(
             summary = "Get next interview question",
             description = "Retrieves the next question to ask in the specified interview"

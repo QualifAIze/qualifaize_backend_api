@@ -4,6 +4,7 @@ import org.qualifaizebackendapi.DTO.request.interview.CreateInterviewRequest;
 import org.qualifaizebackendapi.DTO.response.interview.AssignedInterviewResponse;
 import org.qualifaizebackendapi.DTO.response.interview.ChangeInterviewStatusResponse;
 import org.qualifaizebackendapi.DTO.response.interview.CreateInterviewResponse;
+import org.qualifaizebackendapi.DTO.response.interview.InterviewDetailsResponse;
 import org.qualifaizebackendapi.DTO.response.interview.question.QuestionToAsk;
 import org.qualifaizebackendapi.DTO.response.interview.question.SubmitAnswerResponse;
 import org.qualifaizebackendapi.exception.ResourceNotFoundException;
@@ -29,6 +30,17 @@ public interface InterviewService {
      * @throws DuplicateInterviewException if an interview with the same name already exists for the document
      */
     CreateInterviewResponse createInterview(CreateInterviewRequest request);
+
+    /**
+     * Retrieves interviews with their questions based on user role.
+     * Admins see all interviews, regular users see only assigned interviews.
+     * If interviewId is provided, returns specific interview, otherwise returns all accessible interviews.
+     *
+     * @param interviewId Optional UUID of specific interview to retrieve
+     * @return List of interviews with complete question details (single item if interviewId provided)
+     * @throws ResourceNotFoundException if specific interview not found or access denied
+     */
+    List<InterviewDetailsResponse> getInterviewsWithQuestions(UUID interviewId);
 
     /**
      * Retrieves all interviews assigned to the current authenticated user.

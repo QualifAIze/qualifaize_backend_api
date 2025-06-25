@@ -64,6 +64,7 @@ public class SecurityConfig {
                         // INTERVIEW MANAGEMENT ENDPOINTS
                         // ===============================================
                         .requestMatchers(HttpMethod.POST, "/api/v1/interview").hasAnyRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/interview/with-questions").hasAnyRole("USER", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/interview/assigned").hasAnyRole("USER", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/interview/next/**").hasAnyRole("USER", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/interview/answer/**").hasAnyRole("USER", "ADMIN")

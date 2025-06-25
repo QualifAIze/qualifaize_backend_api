@@ -57,6 +57,9 @@ public class Interview {
     @Column(name = "end_time")
     private OffsetDateTime endTime;
 
+    @Column(name = "candidate_review", columnDefinition = "TEXT")
+    private String candidateReview;
+
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "document_id", nullable = false)
