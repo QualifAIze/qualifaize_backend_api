@@ -79,4 +79,11 @@ public interface InterviewRepository extends JpaRepository<Interview, UUID> {
             AND (:userId IS NULL OR i.assignedToUser.id = :userId)
             """)
     Optional<Interview> findInterviewWithQuestionsById(@Param("interviewId") UUID interviewId, @Param("userId") UUID userId);
+
+    @Query("""
+            SELECT DISTINCT i FROM Interview i
+            LEFT JOIN FETCH i.questions q
+            WHERE q.id = :questionId
+            """)
+    Interview findInterviewByQuestionId(UUID questionId);
 }

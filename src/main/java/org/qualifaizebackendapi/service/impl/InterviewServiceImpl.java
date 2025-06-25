@@ -1,5 +1,6 @@
 package org.qualifaizebackendapi.service.impl;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.qualifaizebackendapi.DTO.db_object.QuestionHistoryRow;
@@ -23,10 +24,7 @@ import org.qualifaizebackendapi.model.enums.InterviewStatus;
 import org.qualifaizebackendapi.model.enums.Role;
 import org.qualifaizebackendapi.repository.InterviewRepository;
 import org.qualifaizebackendapi.repository.QuestionRepository;
-import org.qualifaizebackendapi.service.AiInterviewGenerationService;
-import org.qualifaizebackendapi.service.InterviewService;
-import org.qualifaizebackendapi.service.PdfService;
-import org.qualifaizebackendapi.service.UserService;
+import org.qualifaizebackendapi.service.*;
 import org.qualifaizebackendapi.utils.InterviewProgressCalculator;
 import org.qualifaizebackendapi.utils.SecurityUtils;
 import org.springframework.stereotype.Service;
@@ -43,6 +41,7 @@ public class InterviewServiceImpl implements InterviewService {
     private final PdfService pdfService;
     private final UserService userService;
     private final AiInterviewGenerationService aiInterviewGenerationService;
+    private final AiInterviewReviewService aiInterviewReviewService;
 
     private final InterviewMapper interviewMapper;
     private final QuestionMapper questionMapper;
@@ -147,7 +146,9 @@ public class InterviewServiceImpl implements InterviewService {
 
         SubmitAnswerResponse response = questionMapper.toSubmitAnswerResponse(updatedQuestion, userAnswer);
         response.setCorrect(updatedQuestion.isSubmittedAnswerCorrect());
-        response.setCurrentProgress(calculateInterviewProgress(updatedQuestion.getInterview()));
+        int interviewProgress = calculateInterviewProgress(updatedQuestion.getInterview());
+        if (interviewProgress >= 100) {this.addReviewToInterview(questionId);}
+        response.setCurrentProgress(interviewProgress);
 
         log.info("Answer submitted for question {}: {} (Correct: {})",
                 questionId, userAnswer, response.isCorrect());
@@ -167,6 +168,13 @@ public class InterviewServiceImpl implements InterviewService {
                 savedQuestion.getId(), savedQuestion.getQuestionOrder(), interview.getId());
 
         return savedQuestion;
+    }
+
+    private void addReviewToInterview(UUID questionId){
+        Interview interview = this.interviewRepository.findInterviewByQuestionId(questionId);
+        InterviewDetailsResponse interviewDetails = this.getInterviewsWithQuestions(interview.getId()).getFirst();
+        interview.setCandidateReview(this.aiInterviewReviewService.reviewInterview(interviewDetails));
+        interviewRepository.save(interview);
     }
 
     private Integer calculateInterviewProgress(Interview interview) {

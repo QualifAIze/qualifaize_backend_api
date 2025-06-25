@@ -34,6 +34,9 @@ public class AIClientFactory {
     @Value("classpath:prompts/question_generation/generateQuestionSystemPrompt.st")
     private Resource generateQuestionSystemPrompt;
 
+    @Value("classpath:prompts/interview_review/interviewReviewSystemPrompt.st")
+    private Resource interviewReviewSystemPrompt;
+
     private final Map<String, ChatClient> clientCache = new ConcurrentHashMap<>();
 
     public ChatClient createContentSelectionClient(OpenAiApi.ChatModel chatModel) {
@@ -50,6 +53,14 @@ public class AIClientFactory {
 
     public ChatClient createQuestionGenerationClient(MistralAiApi.ChatModel chatModel) {
         return this.createClient(chatModel, generateQuestionSystemPrompt);
+    }
+
+    public ChatClient createInterviewReviewClient(OpenAiApi.ChatModel chatModel) {
+        return this.createClient(chatModel, interviewReviewSystemPrompt);
+    }
+
+    public ChatClient createInterviewReviewClient(MistralAiApi.ChatModel chatModel) {
+        return this.createClient(chatModel, interviewReviewSystemPrompt);
     }
 
     private ChatClient createClient(OpenAiApi.ChatModel model, Resource promptName) {
