@@ -1,5 +1,6 @@
 package org.qualifaizebackendapi.repository;
 
+import org.qualifaizebackendapi.DTO.db_object.QuestionHistoryRow;
 import org.qualifaizebackendapi.model.Interview;
 import org.qualifaizebackendapi.model.enums.InterviewStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,6 +14,16 @@ import java.util.UUID;
 
 @Repository
 public interface InterviewRepository extends JpaRepository<Interview, UUID> {
+
+    @Query("""
+            SELECT new org.qualifaizebackendapi.DTO.db_object.QuestionHistoryRow(
+                q.questionText, q.correctOption, q.submittedAnswer, q.createdAt, q.answeredAt, q.difficulty)
+            FROM Question q
+            WHERE q.interview.id = :interviewId
+            AND q.submittedAnswer IS NOT NULL
+            ORDER BY q.questionOrder ASC
+            """)
+    List<QuestionHistoryRow> findAnsweredQuestionsBasicDataByInterviewId(UUID interviewId);
 
     @Query("""
             SELECT i.document.id FROM Interview i

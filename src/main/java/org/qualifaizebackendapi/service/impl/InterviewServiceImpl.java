@@ -2,6 +2,7 @@ package org.qualifaizebackendapi.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.qualifaizebackendapi.DTO.db_object.QuestionHistoryRow;
 import org.qualifaizebackendapi.DTO.request.interview.CreateInterviewRequest;
 import org.qualifaizebackendapi.DTO.response.interview.AssignedInterviewResponse;
 import org.qualifaizebackendapi.DTO.response.interview.InterviewDetailsResponse;
@@ -25,6 +26,7 @@ import org.qualifaizebackendapi.service.AiInterviewGenerationService;
 import org.qualifaizebackendapi.service.InterviewService;
 import org.qualifaizebackendapi.service.PdfService;
 import org.qualifaizebackendapi.service.UserService;
+import org.qualifaizebackendapi.utils.InterviewProgressCalculator;
 import org.qualifaizebackendapi.utils.SecurityUtils;
 import org.springframework.stereotype.Service;
 
@@ -162,21 +164,10 @@ public class InterviewServiceImpl implements InterviewService {
     }
 
     private Integer calculateInterviewProgress(Interview interview) {
-        long totalQuestions = questionRepository.countByInterviewId(interview.getId());
-        long answeredQuestions = interview.getQuestions().stream()
-                .mapToLong(q -> q.isAnswered() ? 1 : 0)
-                .sum();
+        List<QuestionHistoryRow> answeredQuestions = interviewRepository
+                .findAnsweredQuestionsBasicDataByInterviewId(interview.getId());
 
-        if (totalQuestions == 0) {
-            return 0;
-        }
-
-        int progressPercentage = (int) ((answeredQuestions * 100) / Math.max(totalQuestions, 10));
-
-        log.debug("Interview progress: {}/{} questions answered ({}%)",
-                answeredQuestions, totalQuestions, progressPercentage);
-
-        return Math.toIntExact(totalQuestions * 20);
+        return InterviewProgressCalculator.calculateProgress(answeredQuestions);
     }
 
     private Interview fetchInterviewWithQuestionsById(UUID interviewId, UUID accessFilterUserId) {
