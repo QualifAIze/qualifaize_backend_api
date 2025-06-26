@@ -36,7 +36,15 @@ public class AiInterviewReviewServiceImpl implements AiInterviewReviewService {
                 .call()
                 .chatResponse()).getResult().getOutput().getText();
 
-        return review.replaceAll("(?s)```markdown.*?```", "");
+        if (review.startsWith("```markdown")) {
+            review = review.replaceFirst("```markdown", ""); // Remove opening marker and any following spaces/newlines
+            if (review.endsWith("```")) {
+                review = review.substring(0, review.length() - 3); // Remove last 3 backticks
+            }
+            review = review.trim(); // Optional: remove leading/trailing whitespace
+        }
+
+        return review;
     }
 
     private Map<String, Object> buildInterviewReviewPromptParameters(InterviewDetailsResponse interviewDetails) {

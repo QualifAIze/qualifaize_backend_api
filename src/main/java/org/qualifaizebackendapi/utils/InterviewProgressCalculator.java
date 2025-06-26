@@ -34,7 +34,7 @@ public final class InterviewProgressCalculator {
 
         // Force 100% completion for edge cases
         if (answeredQuestions.size() >= 25 ||
-                (answeredQuestions.size() >= 15 && finalProgress >= 95)) {
+                (answeredQuestions.size() >= 10 && finalProgress >= 95)) {
             progressPercentage = 100;
         }
 
