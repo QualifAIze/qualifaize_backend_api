@@ -52,7 +52,6 @@ public interface InterviewMapper {
     }
 
     default Long getDurationInSeconds(Interview interview) {
-        Long durationMinutes = interview.getDurationInMinutes();
-        return durationMinutes != null ? durationMinutes * 60 : null;
+        return interview != null ? interview.getDurationInSeconds() : null;
     }
 }

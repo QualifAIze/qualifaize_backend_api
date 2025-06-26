@@ -13,6 +13,7 @@ import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 import org.qualifaizebackendapi.model.enums.Difficulty;
 import org.qualifaizebackendapi.model.enums.InterviewStatus;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -110,9 +111,9 @@ public class Interview {
         return document != null ? document.getSecondaryFileName() : null;
     }
 
-    public Long getDurationInMinutes() {
+    public Long getDurationInSeconds() {
         if (startTime != null && endTime != null) {
-            return java.time.Duration.between(startTime, endTime).toMinutes();
+            return Duration.between(startTime, endTime).toSeconds();
         }
         return null;
     }

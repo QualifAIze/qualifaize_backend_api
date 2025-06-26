@@ -179,8 +179,6 @@ public class InterviewController {
 
         List<InterviewDetailsResponse> interviews = interviewService.getInterviewsWithQuestions(interviewId);
 
-        log.info("Returning {} interview(s) with questions", interviews.size());
-
         return ResponseEntity.ok(interviews);
     }
 
@@ -295,9 +293,6 @@ public class InterviewController {
         log.info("Submitting answer '{}' for question {}", correctAnswer, questionId);
 
         SubmitAnswerResponse response = interviewService.submitAnswer(questionId, correctAnswer);
-
-        log.info("Answer submitted for question {}: {} (Correct: {})",
-                questionId, response.getSubmittedAnswer(), response.isCorrect());
 
         return ResponseEntity.ok(response);
     }

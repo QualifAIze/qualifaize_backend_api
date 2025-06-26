@@ -41,7 +41,7 @@ public class InterviewServiceImpl implements InterviewService {
     private final PdfService pdfService;
     private final UserService userService;
     private final AiInterviewGenerationService aiInterviewGenerationService;
-    private final AiInterviewReviewService aiInterviewReviewService;
+    private final AsyncInterviewReviewService asyncInterviewReviewService;
 
     private final InterviewMapper interviewMapper;
     private final QuestionMapper questionMapper;
@@ -90,17 +90,15 @@ public class InterviewServiceImpl implements InterviewService {
         log.info("Fetching interviews with questions for user: {} (Admin: {}), specific interview: {}",
                 currentUserId, isAdmin, interviewId);
 
-        UUID accessFilterUserId = isAdmin ? null : currentUserId;
-
         List<Interview> interviews = (interviewId != null)
-                ? List.of(fetchInterviewWithQuestionsById(interviewId, accessFilterUserId))
-                : interviewRepository.findInterviewsWithQuestions(accessFilterUserId);
+                ? List.of(fetchInterviewWithQuestionsById(interviewId))
+                : interviewRepository.findInterviewsWithQuestions(currentUserId);
 
         log.info("Retrieved {} interview(s) with questions", interviews.size());
 
         List<InterviewDetailsResponse> response = interviewMapper.toInterviewDetailsResponses(interviews);
         response.forEach(interview -> interview.getQuestions()
-                        .sort(Comparator.comparing(QuestionDetailsResponse::getQuestionOrder)));
+                .sort(Comparator.comparing(QuestionDetailsResponse::getQuestionOrder)));
 
         return response;
     }
@@ -136,6 +134,7 @@ public class InterviewServiceImpl implements InterviewService {
     }
 
     @Override
+    @Transactional
     public SubmitAnswerResponse submitAnswer(UUID questionId, String userAnswer) {
         log.info("Processing answer submission for question: {} with answer: {}", questionId, userAnswer);
 
@@ -146,14 +145,33 @@ public class InterviewServiceImpl implements InterviewService {
 
         SubmitAnswerResponse response = questionMapper.toSubmitAnswerResponse(updatedQuestion, userAnswer);
         response.setCorrect(updatedQuestion.isSubmittedAnswerCorrect());
+
         int interviewProgress = calculateInterviewProgress(updatedQuestion.getInterview());
-        if (interviewProgress >= 100) {this.addReviewToInterview(questionId);}
         response.setCurrentProgress(interviewProgress);
+
+        if (interviewProgress >= 100) {
+            completeInterviewAndGenerateReview(questionId);
+        }
 
         log.info("Answer submitted for question {}: {} (Correct: {})",
                 questionId, userAnswer, response.isCorrect());
 
         return response;
+    }
+
+    private void completeInterviewAndGenerateReview(UUID questionId) {
+        Interview interview = this.interviewRepository.findInterviewByQuestionId(questionId);
+
+        log.info("Interview completed, triggering async review generation for interview: {}", interview.getId());
+
+        this.updateInterviewStatus(interview.getId(), InterviewStatus.COMPLETED);
+
+        InterviewDetailsResponse interviewDetails = this.getInterviewsWithQuestions(interview.getId())
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Interview not found"));
+
+        asyncInterviewReviewService.generateAndSaveReview(interview, interviewDetails);
     }
 
     private Question persistGeneratedQuestion(GenerateQuestionDTO generatedQuestion, Interview interview) {
@@ -170,13 +188,6 @@ public class InterviewServiceImpl implements InterviewService {
         return savedQuestion;
     }
 
-    private void addReviewToInterview(UUID questionId){
-        Interview interview = this.interviewRepository.findInterviewByQuestionId(questionId);
-        InterviewDetailsResponse interviewDetails = this.getInterviewsWithQuestions(interview.getId()).getFirst();
-        interview.setCandidateReview(this.aiInterviewReviewService.reviewInterview(interviewDetails));
-        interviewRepository.save(interview);
-    }
-
     private Integer calculateInterviewProgress(Interview interview) {
         List<QuestionHistoryRow> answeredQuestions = interviewRepository
                 .findAnsweredQuestionsBasicDataByInterviewId(interview.getId());
@@ -184,8 +195,8 @@ public class InterviewServiceImpl implements InterviewService {
         return InterviewProgressCalculator.calculateProgress(answeredQuestions);
     }
 
-    private Interview fetchInterviewWithQuestionsById(UUID interviewId, UUID accessFilterUserId) {
-        return interviewRepository.findInterviewWithQuestionsById(interviewId, accessFilterUserId)
+    private Interview fetchInterviewWithQuestionsById(UUID interviewId) {
+        return interviewRepository.findInterviewWithQuestionsById(interviewId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         String.format("Interview with ID %s not found or access denied", interviewId)
                 ));

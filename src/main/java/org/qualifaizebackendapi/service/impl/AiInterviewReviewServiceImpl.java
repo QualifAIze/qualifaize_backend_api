@@ -44,7 +44,7 @@ public class AiInterviewReviewServiceImpl implements AiInterviewReviewService {
         String documentTitle = interviewDetails.getDocumentTitle();
         String interviewDifficulty = interviewDetails.getDifficulty().toString();
         int totalQuestions = interviewDetails.getQuestions().size();
-        long totalDurationInSeconds = interviewDetails.getDurationInSeconds() / 60;
+        long totalDurationInSeconds = interviewDetails.getDurationInSeconds();
         String candidateFirstName = interviewDetails.getAssignedTo().getFirstName();
         String candidateLastName = interviewDetails.getAssignedTo().getLastName();
         String candidateName = String.format("%s %s", candidateFirstName, candidateLastName);
