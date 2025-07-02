@@ -12,8 +12,11 @@ import java.util.UUID;
 @Repository
 public interface QuestionRepository extends JpaRepository<Question, UUID> {
 
-    @Query("SELECT q FROM Question q WHERE q.interview.id = :interviewId ORDER BY q.questionOrder ASC")
-    List<Question> findByInterviewIdOrderByQuestionOrder(@Param("interviewId") UUID interviewId);
+    @Query("""
+                SELECT q FROM Question q
+                WHERE q.interview.id = :interviewId
+            """)
+    List<Question> findQuestionsByInterviewId(@Param("interviewId") UUID interviewId);
 
     @Query("SELECT COUNT(q) FROM Question q WHERE q.interview.id = :interviewId")
     long countByInterviewId(@Param("interviewId") UUID interviewId);

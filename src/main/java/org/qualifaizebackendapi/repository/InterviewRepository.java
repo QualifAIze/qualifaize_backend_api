@@ -2,6 +2,7 @@ package org.qualifaizebackendapi.repository;
 
 import org.qualifaizebackendapi.DTO.db_object.QuestionHistoryRow;
 import org.qualifaizebackendapi.model.Interview;
+import org.qualifaizebackendapi.model.Question;
 import org.qualifaizebackendapi.model.enums.InterviewStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -74,10 +75,10 @@ public interface InterviewRepository extends JpaRepository<Interview, UUID> {
             LEFT JOIN FETCH i.document d
             LEFT JOIN FETCH i.createdByUser c
             LEFT JOIN FETCH i.assignedToUser a
-            LEFT JOIN FETCH i.questions q
             WHERE i.id = :interviewId
             """)
-    Optional<Interview> findInterviewWithQuestionsById(@Param("interviewId") UUID interviewId);
+    Optional<Interview> findInterviewById(@Param("interviewId") UUID interviewId);
+
 
     @Query("""
             SELECT DISTINCT i FROM Interview i

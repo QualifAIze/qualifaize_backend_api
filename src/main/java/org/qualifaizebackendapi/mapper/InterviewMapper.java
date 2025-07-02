@@ -3,6 +3,7 @@ package org.qualifaizebackendapi.mapper;
 import org.mapstruct.IterableMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.Named;
 import org.qualifaizebackendapi.DTO.request.interview.CreateInterviewRequest;
 import org.qualifaizebackendapi.DTO.response.interview.AssignedInterviewResponse;
 import org.qualifaizebackendapi.DTO.response.interview.InterviewDetailsResponse;
@@ -42,9 +43,10 @@ public interface InterviewMapper {
     @Mapping(target = "questions", source = "questions", qualifiedByName = "toQuestionDetailsResponses")
     @Mapping(target = "totalQuestions", expression = "java(getTotalQuestions(interview))")
     @Mapping(target = "durationInSeconds", expression = "java(getDurationInSeconds(interview))")
+    @Named("toInterviewDetailsResponse")
     InterviewDetailsResponse toInterviewDetailsResponse(Interview interview);
 
-    @IterableMapping(elementTargetType = InterviewDetailsResponse.class)
+    @IterableMapping(qualifiedByName = "toInterviewDetailsResponse")
     List<InterviewDetailsResponse> toInterviewDetailsResponses(List<Interview> interviews);
 
     default Integer getTotalQuestions(Interview interview) {

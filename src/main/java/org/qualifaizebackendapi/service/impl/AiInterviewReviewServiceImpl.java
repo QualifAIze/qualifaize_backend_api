@@ -6,6 +6,7 @@ import org.qualifaizebackendapi.DTO.response.interview.question.QuestionDetailsR
 import org.qualifaizebackendapi.service.AiInterviewReviewService;
 import org.qualifaizebackendapi.service.factory.AIClientFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.mistralai.api.MistralAiApi;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -37,11 +38,11 @@ public class AiInterviewReviewServiceImpl implements AiInterviewReviewService {
                 .chatResponse()).getResult().getOutput().getText();
 
         if (review.startsWith("```markdown")) {
-            review = review.replaceFirst("```markdown", ""); // Remove opening marker and any following spaces/newlines
+            review = review.replaceFirst("```markdown", "");
             if (review.endsWith("```")) {
-                review = review.substring(0, review.length() - 3); // Remove last 3 backticks
+                review = review.substring(0, review.length() - 3);
             }
-            review = review.trim(); // Optional: remove leading/trailing whitespace
+            review = review.trim();
         }
 
         return review;

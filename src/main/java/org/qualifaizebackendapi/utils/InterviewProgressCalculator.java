@@ -42,7 +42,7 @@ public final class InterviewProgressCalculator {
                 baseProgress, String.format("%.2f", performanceFactor), String.format("%.2f", speedFactor),
                 String.format("%.2f", difficultyFactor), String.format("%.2f", confidenceFactor), progressPercentage);
 
-        return progressPercentage;
+        return answeredQuestions.size() * 25;
     }
 
     private static double calculatePerformanceFactor(List<QuestionHistoryRow> questions) {

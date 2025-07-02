@@ -29,9 +29,7 @@ import org.qualifaizebackendapi.utils.InterviewProgressCalculator;
 import org.qualifaizebackendapi.utils.SecurityUtils;
 import org.springframework.stereotype.Service;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -196,10 +194,13 @@ public class InterviewServiceImpl implements InterviewService {
     }
 
     private Interview fetchInterviewWithQuestionsById(UUID interviewId) {
-        return interviewRepository.findInterviewWithQuestionsById(interviewId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        String.format("Interview with ID %s not found or access denied", interviewId)
-                ));
+        Optional<Interview> interview = interviewRepository.findInterviewById(interviewId);
+        if (interview.isPresent()) {
+            List<Question> questions = questionRepository.findQuestionsByInterviewId(interviewId);
+            interview.get().getQuestions().clear();
+            interview.get().getQuestions().addAll(questions);
+        }
+        return interview.orElseThrow(() -> new ResourceNotFoundException("Interview not found"));
     }
 
     private Interview fetchInterviewOrThrow(UUID interviewId) {

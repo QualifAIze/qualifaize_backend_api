@@ -13,6 +13,7 @@ import org.qualifaizebackendapi.service.AiInterviewGenerationService;
 import org.qualifaizebackendapi.service.PdfService;
 import org.qualifaizebackendapi.service.factory.AIClientFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.mistralai.api.MistralAiApi;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -44,7 +45,7 @@ public class AiInterviewGenerationServiceImpl implements AiInterviewGenerationSe
         log.info("Starting AI-powered section selection for interview: {}", interview.getId());
 
         ChatClient contentSelectionClient = aiClientFactory.createContentSelectionClient(
-                OpenAiApi.ChatModel.GPT_4_O
+                OpenAiApi.ChatModel.GPT_4_1
         );
 
         Map<String, Object> promptParams = buildContentSelectionPromptParameters(interview);
@@ -89,7 +90,7 @@ public class AiInterviewGenerationServiceImpl implements AiInterviewGenerationSe
         log.info("Generating question for interview: {} using AI", interview.getId());
 
         ChatClient questionGenerationClient = aiClientFactory.createQuestionGenerationClient(
-                OpenAiApi.ChatModel.GPT_4_O_MINI
+                MistralAiApi.ChatModel.LARGE
         );
 
         Map<String, Object> promptParams = buildQuestionGenerationPromptParameters(
@@ -117,7 +118,7 @@ public class AiInterviewGenerationServiceImpl implements AiInterviewGenerationSe
         String previousQuestionsText = fetchAndFormatPreviousQuestionsForPrompt(interview.getId());
 
         return Map.of(
-                "table_of_contents", documentStructure,
+                "table_of_contents", documentStructure.toString(),
                 "answered_questions", previousQuestionsText
         );
     }
