@@ -19,6 +19,9 @@ public interface QuestionMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "difficulty", source = "generateQuestionDTO.difficulty")
     @Mapping(target = "interview", source = "interview")
+    @Mapping(target = "questionOrder", ignore = true)
+    @Mapping(target = "submittedAnswer", ignore = true)
+    @Mapping(target = "answeredAt", ignore = true)
     Question toQuestion(GenerateQuestionDTO generateQuestionDTO, Interview interview);
 
     @Mapping(target = "questionId", source = "question.id")
@@ -27,6 +30,8 @@ public interface QuestionMapper {
 
     @Mapping(target = "questionId", source = "question.id")
     @Mapping(target = "correctAnswer", source = "question.correctOption")
+    @Mapping(target = "correct", ignore = true)
+    @Mapping(target = "currentProgress", ignore = true)
     SubmitAnswerResponse toSubmitAnswerResponse(Question question, String submittedAnswer);
 
     @Mapping(target = "isCorrect", expression = "java(getIsCorrect(question))")

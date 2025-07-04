@@ -1,13 +1,9 @@
 package org.qualifaizebackendapi.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -23,15 +19,16 @@ public class Subsection {
     @GeneratedValue
     private UUID id;
 
-    @ManyToOne(optional = false)
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "document_id")
     private Document document;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
     private Subsection parent;
 
-    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonProperty("subsections")
     private List<Subsection> children = new ArrayList<>();
 
     @Column()
@@ -48,4 +45,29 @@ public class Subsection {
 
     @Column(nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
+
+    public String getSubsectionInfo(){
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("Section titled '").append(title)
+                .append("' at level ").append(level)
+                .append(" in position ").append(position);
+
+        if (children == null || children.isEmpty()) {
+            sb.append(" with no subsections");
+        } else {
+            sb.append(" containing ").append(children.size())
+                    .append(" subsection").append(children.size() > 1 ? "s" : "")
+                    .append(" which are: ");
+
+            for (int i = 0; i < children.size(); i++) {
+                if (i > 0) {
+                    sb.append(" and ");
+                }
+                sb.append(children.get(i).getSubsectionInfo());
+            }
+        }
+
+        return sb.toString();
+    }
 }

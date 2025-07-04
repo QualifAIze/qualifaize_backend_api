@@ -1,13 +1,13 @@
 package org.qualifaizebackendapi.service.impl;
 
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.qualifaizebackendapi.DTO.db_object.QuestionHistoryRow;
+import org.qualifaizebackendapi.DTO.QuestionDetailsDTO;
 import org.qualifaizebackendapi.DTO.request.interview.CreateInterviewRequest;
 import org.qualifaizebackendapi.DTO.response.interview.AssignedInterviewResponse;
 import org.qualifaizebackendapi.DTO.response.interview.InterviewDetailsResponse;
-import org.qualifaizebackendapi.DTO.response.interview.question.GenerateQuestionDTO;
 import org.qualifaizebackendapi.DTO.response.interview.ChangeInterviewStatusResponse;
 import org.qualifaizebackendapi.DTO.response.interview.CreateInterviewResponse;
 import org.qualifaizebackendapi.DTO.response.interview.question.QuestionDetailsResponse;
@@ -38,11 +38,15 @@ public class InterviewServiceImpl implements InterviewService {
 
     private final PdfService pdfService;
     private final UserService userService;
-    private final AiInterviewGenerationService aiInterviewGenerationService;
+    private final QuestionService questionService;
+
     private final AsyncInterviewReviewService asyncInterviewReviewService;
+
+    private final EntityManager em;
 
     private final InterviewMapper interviewMapper;
     private final QuestionMapper questionMapper;
+
     private final InterviewRepository interviewRepository;
     private final QuestionRepository questionRepository;
 
@@ -88,9 +92,15 @@ public class InterviewServiceImpl implements InterviewService {
         log.info("Fetching interviews with questions for user: {} (Admin: {}), specific interview: {}",
                 currentUserId, isAdmin, interviewId);
 
-        List<Interview> interviews = (interviewId != null)
-                ? List.of(fetchInterviewWithQuestionsById(interviewId))
-                : interviewRepository.findInterviewsWithQuestions(currentUserId);
+        List<Interview> interviews;
+
+        if (interviewId == null) {
+            interviews = isAdmin
+                    ? interviewRepository.findAll()
+                    : interviewRepository.findInterviewsAssignedToUser(currentUserId);
+        } else {
+            interviews = List.of(fetchInterviewOrThrow(interviewId));
+        }
 
         log.info("Retrieved {} interview(s) with questions", interviews.size());
 
@@ -107,7 +117,7 @@ public class InterviewServiceImpl implements InterviewService {
 
         Interview interview = fetchInterviewOrThrow(interviewId);
         interview.setStatus(newStatus);
-        Interview updatedInterview = interviewRepository.save(interview);
+        Interview updatedInterview = interviewRepository.saveAndFlush(interview);
 
         log.info("Successfully updated interview {} status to: {}", interviewId, newStatus);
 
@@ -119,16 +129,11 @@ public class InterviewServiceImpl implements InterviewService {
         log.info("Generating next question for interview: {}", interviewId);
 
         Interview interview = fetchInterviewOrThrow(interviewId);
+        Question nextQuestion = questionService.getNextQuestion(interview);
 
-        GenerateQuestionDTO generatedQuestion = aiInterviewGenerationService
-                .generateNextInterviewQuestion(interview);
+        log.info("Successfully generated and saved question {} for interview: {}", nextQuestion.getId(), interviewId);
 
-        Question savedQuestion = persistGeneratedQuestion(generatedQuestion, interview);
-
-        log.info("Successfully generated and saved question {} for interview: {}",
-                savedQuestion.getId(), interviewId);
-
-        return questionMapper.toQuestionToAsk(savedQuestion);
+        return questionMapper.toQuestionToAsk(nextQuestion);
     }
 
     @Override
@@ -136,23 +141,17 @@ public class InterviewServiceImpl implements InterviewService {
     public SubmitAnswerResponse submitAnswer(UUID questionId, String userAnswer) {
         log.info("Processing answer submission for question: {} with answer: {}", questionId, userAnswer);
 
-        Question question = fetchQuestionOrThrow(questionId);
+        Question question = questionService.addUserSubmitAnswer(questionId, userAnswer);
 
-        question.submitAnswer(userAnswer);
-        Question updatedQuestion = questionRepository.save(question);
+        SubmitAnswerResponse response = questionMapper.toSubmitAnswerResponse(question, userAnswer);
+        response.setCorrect(question.isSubmittedAnswerCorrect());
 
-        SubmitAnswerResponse response = questionMapper.toSubmitAnswerResponse(updatedQuestion, userAnswer);
-        response.setCorrect(updatedQuestion.isSubmittedAnswerCorrect());
-
-        int interviewProgress = calculateInterviewProgress(updatedQuestion.getInterview());
+        int interviewProgress = calculateInterviewProgress(question.getInterview());
         response.setCurrentProgress(interviewProgress);
 
-        if (interviewProgress >= 100) {
-            completeInterviewAndGenerateReview(questionId);
-        }
+        if (interviewProgress >= 100) completeInterviewAndGenerateReview(questionId);
 
-        log.info("Answer submitted for question {}: {} (Correct: {})",
-                questionId, userAnswer, response.isCorrect());
+        log.info("Answer submitted for question {}: {} (Correct: {})", questionId, userAnswer, response.isCorrect());
 
         return response;
     }
@@ -172,48 +171,18 @@ public class InterviewServiceImpl implements InterviewService {
         asyncInterviewReviewService.generateAndSaveReview(interview, interviewDetails);
     }
 
-    private Question persistGeneratedQuestion(GenerateQuestionDTO generatedQuestion, Interview interview) {
-        Question questionEntity = questionMapper.toQuestion(generatedQuestion, interview);
-
-        long currentQuestionCount = questionRepository.countByInterviewId(interview.getId());
-        questionEntity.setQuestionOrder(Math.toIntExact(currentQuestionCount) + 1);
-
-        Question savedQuestion = questionRepository.save(questionEntity);
-
-        log.debug("Persisted question {} with order {} for interview: {}",
-                savedQuestion.getId(), savedQuestion.getQuestionOrder(), interview.getId());
-
-        return savedQuestion;
-    }
-
     private Integer calculateInterviewProgress(Interview interview) {
-        List<QuestionHistoryRow> answeredQuestions = interviewRepository
-                .findAnsweredQuestionsBasicDataByInterviewId(interview.getId());
+        List<QuestionDetailsDTO> answeredQuestions = questionRepository
+                .findQuestionsDetailsByInterviewId(interview.getId());
 
         return InterviewProgressCalculator.calculateProgress(answeredQuestions);
     }
 
-    private Interview fetchInterviewWithQuestionsById(UUID interviewId) {
-        Optional<Interview> interview = interviewRepository.findInterviewById(interviewId);
-        if (interview.isPresent()) {
-            List<Question> questions = questionRepository.findQuestionsByInterviewId(interviewId);
-            interview.get().getQuestions().clear();
-            interview.get().getQuestions().addAll(questions);
-        }
-        return interview.orElseThrow(() -> new ResourceNotFoundException("Interview not found"));
-    }
-
     private Interview fetchInterviewOrThrow(UUID interviewId) {
+        em.clear();
         return interviewRepository.findById(interviewId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         String.format("Interview with ID %s not found", interviewId)
-                ));
-    }
-
-    private Question fetchQuestionOrThrow(UUID questionId) {
-        return questionRepository.findById(questionId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        String.format("Question with ID %s not found", questionId)
                 ));
     }
 }

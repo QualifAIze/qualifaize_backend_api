@@ -1,4 +1,4 @@
-package org.qualifaizebackendapi.DTO.db_object;
+package org.qualifaizebackendapi.DTO;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -11,14 +11,14 @@ import java.time.OffsetDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
-public class QuestionHistoryRow {
+public class QuestionDetailsDTO {
     private String questionText;
     private String correctOption;
     private String submittedAnswer;
     private Long answerTimeInMillis;
     private Difficulty difficulty;
 
-    public QuestionHistoryRow(String questionText, String correctOption, String submittedAnswer, OffsetDateTime answerCreatedAt, OffsetDateTime answerAnsweredAt, Difficulty difficulty) {
+    public QuestionDetailsDTO(String questionText, String correctOption, String submittedAnswer, OffsetDateTime answerCreatedAt, OffsetDateTime answerAnsweredAt, Difficulty difficulty) {
         this.questionText = questionText;
         this.correctOption = correctOption;
         this.submittedAnswer = submittedAnswer;

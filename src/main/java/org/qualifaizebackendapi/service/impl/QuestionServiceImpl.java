@@ -2,21 +2,15 @@ package org.qualifaizebackendapi.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.qualifaizebackendapi.DTO.db_object.QuestionHistoryRow;
+import org.qualifaizebackendapi.DTO.QuestionDetailsDTO;
 import org.qualifaizebackendapi.DTO.response.interview.question.GenerateQuestionDTO;
-import org.qualifaizebackendapi.DTO.response.interview.question.QuestionSectionResponse;
-import org.qualifaizebackendapi.DTO.response.pdf.UploadedPdfResponseWithConcatenatedContent;
-import org.qualifaizebackendapi.DTO.response.pdf.table_of_contents_response.UploadedPdfResponseWithToc;
+import org.qualifaizebackendapi.exception.ResourceNotFoundException;
+import org.qualifaizebackendapi.mapper.QuestionMapper;
 import org.qualifaizebackendapi.model.Interview;
-import org.qualifaizebackendapi.repository.InterviewRepository;
-import org.qualifaizebackendapi.service.AiInterviewGenerationService;
-import org.qualifaizebackendapi.service.PdfService;
-import org.qualifaizebackendapi.service.factory.AIClientFactory;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.mistralai.api.MistralAiApi;
-import org.springframework.ai.openai.api.OpenAiApi;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.Resource;
+import org.qualifaizebackendapi.model.Question;
+import org.qualifaizebackendapi.repository.QuestionRepository;
+import org.qualifaizebackendapi.service.AiQuestionGenerationService;
+import org.qualifaizebackendapi.service.QuestionService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -28,118 +22,51 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class AiInterviewGenerationServiceImpl implements AiInterviewGenerationService {
+public class QuestionServiceImpl implements QuestionService {
 
-    private final AIClientFactory aiClientFactory;
-    private final PdfService pdfService;
-    private final InterviewRepository interviewRepository;
+    private final QuestionRepository questionRepository;
 
-    @Value("classpath:prompts/content_selection/sectionSelectionUserPrompt.st")
-    private Resource contentSelectionUserPrompt;
+    private final QuestionMapper questionMapper;
 
-    @Value("classpath:prompts/question_generation/generateQuestionUserPrompt.st")
-    private Resource questionGenerationUserPrompt;
+    private final AiQuestionGenerationService aiQuestionGenerationService;
 
     @Override
-    public QuestionSectionResponse selectDocumentSectionForQuestion(Interview interview) {
-        log.info("Starting AI-powered section selection for interview: {}", interview.getId());
+    public Question getNextQuestion(Interview interview) {
+        GenerateQuestionDTO generatedQuestion = aiQuestionGenerationService
+                .generateNextInterviewQuestion(interview, this.previousQuestionsAnalysisText(interview.getId()));
 
-        ChatClient contentSelectionClient = aiClientFactory.createContentSelectionClient(
-                OpenAiApi.ChatModel.GPT_4_1
-        );
+        Question questionEntity = questionMapper.toQuestion(generatedQuestion, interview);
 
-        Map<String, Object> promptParams = buildContentSelectionPromptParameters(interview);
+        long currentQuestionCount = questionRepository.countByInterviewId(interview.getId());
+        questionEntity.setQuestionOrder(Math.toIntExact(currentQuestionCount) + 1);
 
-        QuestionSectionResponse selectedSection = contentSelectionClient
-                .prompt()
-                .user(userSpec -> userSpec.text(contentSelectionUserPrompt).params(promptParams))
-                .call()
-                .entity(QuestionSectionResponse.class);
+        Question savedQuestion = questionRepository.save(questionEntity);
 
-        log.info("AI selected section '{}' for interview: {} - Reason: {}",
-                selectedSection.getTitle(), interview.getId(), selectedSection.getExplanation());
+        log.debug("Persisted question {} with order {} for interview: {}",
+                savedQuestion.getId(), savedQuestion.getQuestionOrder(), interview.getId());
 
-        return selectedSection;
+        return savedQuestion;
     }
 
     @Override
-    public GenerateQuestionDTO generateNextInterviewQuestion(Interview interview) {
-        log.info("Starting complete question generation process for interview: {}", interview.getId());
-
-        QuestionSectionResponse selectedSection = selectDocumentSectionForQuestion(interview);
-        String sectionContent = retrieveContentForSection(interview, selectedSection.getTitle());
-        GenerateQuestionDTO generatedQuestion = generateQuestionFromContent(interview, sectionContent);
-
-        log.info("Completed question generation process for interview: {} - Section: '{}', Question: '{}'",
-                interview.getId(), selectedSection.getTitle(),
-                truncateText(generatedQuestion.getQuestionText(), 50));
-
-        return generatedQuestion;
+    public Question getQuestion(UUID questionId) {
+        return questionRepository.findById(questionId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        String.format("Question with ID %s not found", questionId)
+                ));
     }
 
-    private String retrieveContentForSection(Interview interview, String sectionTitle) {
-        UUID documentId = interviewRepository.findDocumentIdByInterviewId(interview.getId());
-
-        UploadedPdfResponseWithConcatenatedContent sectionContent =
-                pdfService.getConcatenatedContentById(documentId, sectionTitle);
-
-        return sectionContent.getContent();
+    @Override
+    public Question addUserSubmitAnswer(UUID questionId, String submitAnswer) {
+        Question question = this.getQuestion(questionId);
+        question.submitAnswer(submitAnswer);
+        return questionRepository.save(question);
     }
 
-    private GenerateQuestionDTO generateQuestionFromContent(Interview interview, String contentForQuestion) {
-        log.info("Generating question for interview: {} using AI", interview.getId());
 
-        ChatClient questionGenerationClient = aiClientFactory.createQuestionGenerationClient(
-                MistralAiApi.ChatModel.LARGE
-        );
-
-        Map<String, Object> promptParams = buildQuestionGenerationPromptParameters(
-                interview, contentForQuestion
-        );
-
-        GenerateQuestionDTO generatedQuestion = questionGenerationClient
-                .prompt()
-                .user(userSpec -> userSpec.text(questionGenerationUserPrompt).params(promptParams))
-                .call()
-                .entity(GenerateQuestionDTO.class);
-
-        log.info("Successfully generated question for interview: {} - Difficulty: {}",
-                interview.getId(), generatedQuestion.getDifficulty());
-
-        return generatedQuestion;
-    }
-
-    private Map<String, Object> buildContentSelectionPromptParameters(Interview interview) {
-        UUID documentId = interviewRepository.findDocumentIdByInterviewId(interview.getId());
-
-        UploadedPdfResponseWithToc documentStructure =
-                pdfService.getDocumentDetailsAndTocById(documentId);
-
-        String previousQuestionsText = fetchAndFormatPreviousQuestionsForPrompt(interview.getId());
-
-        return Map.of(
-                "table_of_contents", documentStructure.toString(),
-                "answered_questions", previousQuestionsText
-        );
-    }
-
-    private Map<String, Object> buildQuestionGenerationPromptParameters(
-            Interview interview, String contentForQuestion) {
-
-        String previousQuestionsText = fetchAndFormatPreviousQuestionsForPrompt(interview.getId());
-
-        log.debug("Question generation parameters building");
-
-        return Map.of(
-                "answered_questions", previousQuestionsText,
-                "content", contentForQuestion,
-                "difficulty", interview.getDifficulty()
-        );
-    }
-
-    private String fetchAndFormatPreviousQuestionsForPrompt(UUID interviewId) {
-        List<QuestionHistoryRow> previousQuestions = interviewRepository
-                .findAnsweredQuestionsBasicDataByInterviewId(interviewId);
+    @Override
+    public String previousQuestionsAnalysisText(UUID interviewId) {
+        List<QuestionDetailsDTO> previousQuestions = questionRepository.findQuestionsDetailsByInterviewId(interviewId);
 
         if (previousQuestions == null || previousQuestions.isEmpty()) {
             return "No previously asked questions in this interview. Start with baseline difficulty questions.";
@@ -182,11 +109,11 @@ public class AiInterviewGenerationServiceImpl implements AiInterviewGenerationSe
         prompt.append("\n\nQUESTION HISTORY:\n");
 
         for (int i = 0; i < previousQuestions.size(); i++) {
-            QuestionHistoryRow question = previousQuestions.get(i);
+            QuestionDetailsDTO question = previousQuestions.get(i);
 
             prompt.append(String.format("%d. ", i + 1));
 
-            String questionText = truncateText(question.getQuestionText(), 100);
+            String questionText = question.getQuestionText();
             prompt.append("Q: ").append(questionText);
 
             String status = question.isSubmittedAnswerCorrect() ? "CORRECT" : "INCORRECT";
@@ -222,9 +149,9 @@ public class AiInterviewGenerationServiceImpl implements AiInterviewGenerationSe
                                   boolean isDeliberating) {
     }
 
-    private TimingAnalysis analyzeTimingPatterns(List<QuestionHistoryRow> questions) {
+    private TimingAnalysis analyzeTimingPatterns(List<QuestionDetailsDTO> questions) {
         List<Long> answerTimes = questions.stream()
-                .map(QuestionHistoryRow::getAnswerTimeInMillis)
+                .map(QuestionDetailsDTO::getAnswerTimeInMillis)
                 .filter(time -> time != null && time > 0)
                 .toList();
 
@@ -288,9 +215,9 @@ public class AiInterviewGenerationServiceImpl implements AiInterviewGenerationSe
         return guidance.toString();
     }
 
-    private void addPerformanceTrend(StringBuilder prompt, List<QuestionHistoryRow> questions) {
+    private void addPerformanceTrend(StringBuilder prompt, List<QuestionDetailsDTO> questions) {
         int recentCount = Math.min(3, questions.size());
-        List<QuestionHistoryRow> recentQuestions = questions.subList(
+        List<QuestionDetailsDTO> recentQuestions = questions.subList(
                 questions.size() - recentCount, questions.size());
 
         long recentCorrect = recentQuestions.stream()
@@ -325,12 +252,12 @@ public class AiInterviewGenerationServiceImpl implements AiInterviewGenerationSe
         }
     }
 
-    private void addTimingPatternAnalysis(StringBuilder prompt, List<QuestionHistoryRow> questions, TimingAnalysis overall) {
-        List<QuestionHistoryRow> correctAnswers = questions.stream()
-                .filter(QuestionHistoryRow::isSubmittedAnswerCorrect)
+    private void addTimingPatternAnalysis(StringBuilder prompt, List<QuestionDetailsDTO> questions, TimingAnalysis overall) {
+        List<QuestionDetailsDTO> correctAnswers = questions.stream()
+                .filter(QuestionDetailsDTO::isSubmittedAnswerCorrect)
                 .toList();
 
-        List<QuestionHistoryRow> incorrectAnswers = questions.stream()
+        List<QuestionDetailsDTO> incorrectAnswers = questions.stream()
                 .filter(q -> !q.isSubmittedAnswerCorrect())
                 .toList();
 
@@ -385,10 +312,10 @@ public class AiInterviewGenerationServiceImpl implements AiInterviewGenerationSe
         }
     }
 
-    private void addAnswerPatternAnalysis(StringBuilder prompt, List<QuestionHistoryRow> questions) {
+    private void addAnswerPatternAnalysis(StringBuilder prompt, List<QuestionDetailsDTO> questions) {
         Map<String, Long> answerCounts = questions.stream()
                 .collect(Collectors.groupingBy(
-                        QuestionHistoryRow::getSubmittedAnswer,
+                        QuestionDetailsDTO::getSubmittedAnswer,
                         Collectors.counting()
                 ));
 
@@ -409,13 +336,13 @@ public class AiInterviewGenerationServiceImpl implements AiInterviewGenerationSe
         }
     }
 
-    private void addDifficultyPatternAnalysis(StringBuilder prompt, List<QuestionHistoryRow> questions) {
-        Map<String, List<QuestionHistoryRow>> questionsByDifficulty = questions.stream()
+    private void addDifficultyPatternAnalysis(StringBuilder prompt, List<QuestionDetailsDTO> questions) {
+        Map<String, List<QuestionDetailsDTO>> questionsByDifficulty = questions.stream()
                 .collect(Collectors.groupingBy(q -> q.getDifficulty().toString()));
 
-        for (Map.Entry<String, List<QuestionHistoryRow>> entry : questionsByDifficulty.entrySet()) {
+        for (Map.Entry<String, List<QuestionDetailsDTO>> entry : questionsByDifficulty.entrySet()) {
             String difficulty = entry.getKey();
-            List<QuestionHistoryRow> difficultyQuestions = entry.getValue();
+            List<QuestionDetailsDTO> difficultyQuestions = entry.getValue();
 
             long correct = difficultyQuestions.stream()
                     .mapToLong(q -> q.isSubmittedAnswerCorrect() ? 1 : 0)
@@ -445,15 +372,5 @@ public class AiInterviewGenerationServiceImpl implements AiInterviewGenerationSe
                 .orElse("MEDIUM");
 
         prompt.append(String.format("- Best performance on %s questions. ", bestDifficulty));
-    }
-
-    private String truncateText(String text, int maxLength) {
-        if (text == null) {
-            return "";
-        }
-        if (text.length() <= maxLength) {
-            return text;
-        }
-        return text.substring(0, maxLength - 3) + "...";
     }
 }

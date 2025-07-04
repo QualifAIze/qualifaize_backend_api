@@ -19,6 +19,11 @@ public interface InterviewMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "questions", ignore = true)
+    @Mapping(target = "status", ignore = true)
+    @Mapping(target = "startTime", ignore = true)
+    @Mapping(target = "endTime", ignore = true)
+    @Mapping(target = "candidateReview", ignore = true)
     Interview toInterviewFromCreateInterviewRequest(CreateInterviewRequest request, Document document, User createdByUser, User assignedToUser);
 
     @Mapping(target = "interviewId", source = "id")

@@ -1,8 +1,6 @@
 package org.qualifaizebackendapi.mapper;
 
-
 import org.mapstruct.*;
-import org.qualifaizebackendapi.DTO.db_object.DocumentWithUserRow;
 import org.qualifaizebackendapi.DTO.request.user.UpdateUserDetailsRequest;
 import org.qualifaizebackendapi.DTO.request.user.UserRegisterRequest;
 import org.qualifaizebackendapi.DTO.response.UserAuthResponse;
@@ -19,10 +17,12 @@ public interface UserMapper {
 
     @Mapping(target = "password", ignore = true)
     @Mapping(target = "roles", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "deleted", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "id", ignore = true)
     User toUser(UserRegisterRequest userRegisterRequest);
-
-    @Named("toUserOverviewResponseFromDocumentWithUserRow")
-    UserDetailsOverviewResponse toUserOverviewResponseFromDocumentWithUserRow(DocumentWithUserRow dbRow);
 
     @Mapping(target = "userId", source = "id")
     @Named("toUserDetailsOverviewResponse")
@@ -45,5 +45,7 @@ public interface UserMapper {
     @Mapping(target = "roles", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "deleted", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     void updateUserFromRequest(UpdateUserDetailsRequest request, @MappingTarget User user);
 }

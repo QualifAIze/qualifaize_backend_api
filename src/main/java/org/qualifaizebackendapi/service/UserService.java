@@ -4,7 +4,6 @@ import org.qualifaizebackendapi.DTO.request.user.UpdateUserDetailsRequest;
 import org.qualifaizebackendapi.DTO.request.user.UserLoginRequest;
 import org.qualifaizebackendapi.DTO.request.user.UserRegisterRequest;
 import org.qualifaizebackendapi.DTO.response.UserAuthResponse;
-import org.qualifaizebackendapi.DTO.response.user.UserDetailsOverviewResponse;
 import org.qualifaizebackendapi.DTO.response.user.UserDetailsResponse;
 import org.qualifaizebackendapi.exception.ResourceNotFoundException;
 import org.qualifaizebackendapi.model.User;

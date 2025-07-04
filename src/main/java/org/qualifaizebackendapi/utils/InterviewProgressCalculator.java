@@ -1,7 +1,7 @@
 package org.qualifaizebackendapi.utils;
 
 import lombok.extern.slf4j.Slf4j;
-import org.qualifaizebackendapi.DTO.db_object.QuestionHistoryRow;
+import org.qualifaizebackendapi.DTO.QuestionDetailsDTO;
 import org.qualifaizebackendapi.model.enums.Difficulty;
 
 import java.util.List;
@@ -17,7 +17,7 @@ public final class InterviewProgressCalculator {
     /**
      * Calculates dynamic interview progress based on performance, speed, difficulty, and confidence
      */
-    public static int calculateProgress(List<QuestionHistoryRow> answeredQuestions) {
+    public static int calculateProgress(List<QuestionDetailsDTO> answeredQuestions) {
         if (answeredQuestions == null || answeredQuestions.isEmpty()) {
             return 0;
         }
@@ -42,10 +42,10 @@ public final class InterviewProgressCalculator {
                 baseProgress, String.format("%.2f", performanceFactor), String.format("%.2f", speedFactor),
                 String.format("%.2f", difficultyFactor), String.format("%.2f", confidenceFactor), progressPercentage);
 
-        return answeredQuestions.size() * 25;
+        return progressPercentage;
     }
 
-    private static double calculatePerformanceFactor(List<QuestionHistoryRow> questions) {
+    private static double calculatePerformanceFactor(List<QuestionDetailsDTO> questions) {
         if (questions.size() < 3) {
             return 1.0;
         }
@@ -53,7 +53,7 @@ public final class InterviewProgressCalculator {
         double totalWeight = 0;
         double weightedCorrect = 0;
 
-        for (QuestionHistoryRow question : questions) {
+        for (QuestionDetailsDTO question : questions) {
             double weight = getDifficultyWeight(question.getDifficulty());
             totalWeight += weight;
 
@@ -77,9 +77,9 @@ public final class InterviewProgressCalculator {
         }
     }
 
-    private static double calculateSpeedFactor(List<QuestionHistoryRow> questions) {
+    private static double calculateSpeedFactor(List<QuestionDetailsDTO> questions) {
         List<Long> validTimes = questions.stream()
-                .map(QuestionHistoryRow::getAnswerTimeInMillis)
+                .map(QuestionDetailsDTO::getAnswerTimeInMillis)
                 .filter(time -> time != null && time > 0)
                 .toList();
 
@@ -111,9 +111,9 @@ public final class InterviewProgressCalculator {
         }
     }
 
-    private static double calculateDifficultyFactor(List<QuestionHistoryRow> questions) {
-        Map<Difficulty, List<QuestionHistoryRow>> byDifficulty = questions.stream()
-                .collect(Collectors.groupingBy(QuestionHistoryRow::getDifficulty));
+    private static double calculateDifficultyFactor(List<QuestionDetailsDTO> questions) {
+        Map<Difficulty, List<QuestionDetailsDTO>> byDifficulty = questions.stream()
+                .collect(Collectors.groupingBy(QuestionDetailsDTO::getDifficulty));
 
         boolean hasEasy = byDifficulty.containsKey(Difficulty.EASY);
         boolean hasMedium = byDifficulty.containsKey(Difficulty.MEDIUM);
@@ -134,12 +134,12 @@ public final class InterviewProgressCalculator {
         }
     }
 
-    private static double calculateConfidenceFactor(List<QuestionHistoryRow> questions) {
+    private static double calculateConfidenceFactor(List<QuestionDetailsDTO> questions) {
         if (questions.size() < 3) {
             return 1.0;
         }
 
-        List<QuestionHistoryRow> recent = questions.subList(
+        List<QuestionDetailsDTO> recent = questions.subList(
                 Math.max(0, questions.size() - 3), questions.size());
 
         long recentCorrect = recent.stream()
@@ -147,7 +147,7 @@ public final class InterviewProgressCalculator {
                 .sum();
 
         if (questions.size() >= 6) {
-            List<QuestionHistoryRow> earlier = questions.subList(
+            List<QuestionDetailsDTO> earlier = questions.subList(
                     Math.max(0, questions.size() - 6), questions.size() - 3);
 
             long earlierCorrect = earlier.stream()
@@ -183,7 +183,7 @@ public final class InterviewProgressCalculator {
         };
     }
 
-    private static double calculateDifficultyAccuracy(List<QuestionHistoryRow> questions) {
+    private static double calculateDifficultyAccuracy(List<QuestionDetailsDTO> questions) {
         if (questions == null || questions.isEmpty()) {
             return 0.0;
         }
