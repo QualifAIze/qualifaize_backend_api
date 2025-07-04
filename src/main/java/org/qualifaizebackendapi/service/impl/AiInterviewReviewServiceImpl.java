@@ -23,11 +23,12 @@ public class AiInterviewReviewServiceImpl implements AiInterviewReviewService {
     @Value("classpath:prompts/interview_review/interviewReviewUserPrompt.st")
     private Resource interviewReviewUserPrompt;
 
+    private final OpenAiApi.ChatModel LLM_MODEL = OpenAiApi.ChatModel.GPT_4_1;
+    //private final MistralAiApi.ChatModel LLM_MODEL = MistralAiApi.ChatModel.MINISTRAL_8B_LATEST;
+
     @Override
     public String reviewInterview(InterviewDetailsResponse interviewDetails) {
-        ChatClient interviewReviewClient = aiClientFactory.createInterviewReviewClient(
-                OpenAiApi.ChatModel.GPT_4_1
-        );
+        ChatClient interviewReviewClient = aiClientFactory.createInterviewReviewClient(LLM_MODEL);
 
         Map<String, Object> promptParams = this.buildInterviewReviewPromptParameters(interviewDetails);
 

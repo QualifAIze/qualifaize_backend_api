@@ -13,6 +13,7 @@ import org.qualifaizebackendapi.service.PdfService;
 import org.qualifaizebackendapi.service.factory.AIClientFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.mistralai.api.MistralAiApi;
+import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,9 @@ public class AiQuestionGenerationServiceImpl implements AiQuestionGenerationServ
     @Value("classpath:prompts/question_generation/generateQuestionUserPrompt.st")
     private Resource questionGenerationUserPrompt;
 
+    //private final OpenAiApi.ChatModel LLM_MODEL = OpenAiApi.ChatModel.GPT_4_1;
+    private final MistralAiApi.ChatModel LLM_MODEL = MistralAiApi.ChatModel.LARGE;
+
     @Override
     public GenerateQuestionDTO generateNextInterviewQuestion(Interview interview, String previousQuestionAnalysisText) {
         log.info("Starting complete question generation process for interview: {}", interview.getId());
@@ -51,9 +55,7 @@ public class AiQuestionGenerationServiceImpl implements AiQuestionGenerationServ
 
     private GenerateQuestionDTO generateQuestionFromContent(String previousQuestionsAnalysisText, Interview interview,
                                                             String contentForQuestion) {
-        ChatClient questionGenerationClient = aiClientFactory.createQuestionGenerationClient(
-                MistralAiApi.ChatModel.LARGE
-        );
+        ChatClient questionGenerationClient = aiClientFactory.createQuestionGenerationClient(LLM_MODEL);
 
         Map<String, Object> promptParams = Map.of(
                 "answered_questions", previousQuestionsAnalysisText,

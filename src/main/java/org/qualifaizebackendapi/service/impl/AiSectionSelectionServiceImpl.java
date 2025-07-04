@@ -8,6 +8,7 @@ import org.qualifaizebackendapi.model.Interview;
 import org.qualifaizebackendapi.service.AiSectionSelectionService;
 import org.qualifaizebackendapi.service.factory.AIClientFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.mistralai.api.MistralAiApi;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -25,13 +26,14 @@ public class AiSectionSelectionServiceImpl implements AiSectionSelectionService 
     @Value("classpath:prompts/content_selection/sectionSelectionUserPrompt.st")
     private Resource contentSelectionUserPrompt;
 
+    private final OpenAiApi.ChatModel LLM_MODEL = OpenAiApi.ChatModel.GPT_4_1;
+    //private final MistralAiApi.ChatModel LLM_MODEL = MistralAiApi.ChatModel.LARGE;
+
     @Override
     public QuestionSectionResponse selectSectionForNextQuestion(Interview interview, String previousQuestionsAnalysisText) {
         log.info("Starting AI-powered section selection for interview: {}", interview.getId());
 
-        ChatClient contentSelectionClient = aiClientFactory.createContentSelectionClient(
-                OpenAiApi.ChatModel.GPT_4_1
-        );
+        ChatClient contentSelectionClient = aiClientFactory.createContentSelectionClient(LLM_MODEL);
 
         Document document = interview.getDocument();
         String text = document.getTableOfContentsText();
