@@ -159,15 +159,15 @@ public class InterviewServiceImpl implements InterviewService {
     private void completeInterviewAndGenerateReview(UUID questionId) {
         Interview interview = this.interviewRepository.findInterviewByQuestionId(questionId);
 
-        log.info("Interview completed, triggering async review generation for interview: {}", interview.getId());
-
-        this.updateInterviewStatus(interview.getId(), InterviewStatus.COMPLETED);
+        ChangeInterviewStatusResponse newStatus = this.updateInterviewStatus(interview.getId(), InterviewStatus.COMPLETED);
+        interview.setStatus(newStatus.getInterviewStatus());
 
         InterviewDetailsResponse interviewDetails = this.getInterviewsWithQuestions(interview.getId())
                 .stream()
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Interview not found"));
 
+        log.info("Interview completed, triggering async review generation for interview: {}", interview.getId());
         asyncInterviewReviewService.generateAndSaveReview(interview, interviewDetails);
     }
 

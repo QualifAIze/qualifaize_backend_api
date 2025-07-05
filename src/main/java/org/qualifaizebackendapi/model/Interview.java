@@ -131,7 +131,7 @@ public class Interview {
     }
 
     public void complete() {
-            if (this.status == InterviewStatus.IN_PROGRESS) {
+        if (this.status == InterviewStatus.IN_PROGRESS) {
             this.status = InterviewStatus.COMPLETED;
             this.endTime = OffsetDateTime.now();
         }
