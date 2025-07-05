@@ -26,8 +26,8 @@ public class AiSectionSelectionServiceImpl implements AiSectionSelectionService 
     @Value("classpath:prompts/content_selection/sectionSelectionUserPrompt.st")
     private Resource contentSelectionUserPrompt;
 
-    private final OpenAiApi.ChatModel LLM_MODEL = OpenAiApi.ChatModel.GPT_4_1;
-    //private final MistralAiApi.ChatModel LLM_MODEL = MistralAiApi.ChatModel.LARGE;
+    //private final OpenAiApi.ChatModel LLM_MODEL = OpenAiApi.ChatModel.GPT_4_1;
+    private final MistralAiApi.ChatModel LLM_MODEL = MistralAiApi.ChatModel.LARGE;
 
     @Override
     public QuestionSectionResponse selectSectionForNextQuestion(Interview interview, String previousQuestionsAnalysisText) {
